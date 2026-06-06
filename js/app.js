@@ -9,7 +9,7 @@ const EMOJI_PICK = ['💗','💑','🎂','🎉','✈️','🍽️','🎁','🌸'
 
 let ME = null;
 let lastActAt = 0;
-const data = { anniversaries: [], bucket: [], diary: [], statuses: [], photos: [], footprints: [], roulette: [] };
+const data = { anniversaries: [], bucket: [], diary: [], statuses: [], photos: [], footprints: [], roulette: [], pokes: [] };
 let calRef = startOfMonth(new Date());
 let selectedDay = null;     // {y,m,d}
 let bucketCat = 'travel';
@@ -173,9 +173,10 @@ async function enterApp(user) {
 //  로드 + 렌더
 // ============================================================
 async function loadAll() {
-  const [a, b, d, s, ph, f, r] = await Promise.all([
+  const [a, b, d, s, ph, f, r, pk] = await Promise.all([
     DB.anniversaries.list(), DB.bucket.list(), DB.diary.list(),
     DB.status.all(), DB.photos.list(), DB.footprints.list(), DB.roulette.list(),
+    DB.poke.recent(),
   ]);
   data.anniversaries = a.data || [];
   data.bucket = b.data || [];
@@ -184,6 +185,7 @@ async function loadAll() {
   data.photos = ph.data || [];
   data.footprints = f.data || [];
   data.roulette = r.data || [];
+  data.pokes = pk.data || [];
   const errs = [a, b, d, s, ph, f, r].map(x => x.error).filter(Boolean);
   if (errs.some(e => /does not exist|relation|column/i.test(e.message || '')))
     toast('⚠️ DB가 최신이 아니에요. Supabase에서 schema.sql을 다시 실행해줘!');
@@ -191,7 +193,7 @@ async function loadAll() {
   renderAll();
 }
 function renderAll() {
-  renderDday(); renderMood(); renderUpcoming();
+  renderDday(); renderMood(); renderUpcoming(); renderPokes();
   renderCalendar(); renderBucketTools(); renderBucket(); renderPhotos();
   renderFootprints(); renderDiary();
 }
@@ -203,6 +205,7 @@ const TABLE_LABEL = { anniversaries:'기념일', bucket_items:'버킷', diary_en
 async function onRealtime(table, payload) {
   if (table === 'pokes' && payload.eventType === 'INSERT') {
     if (payload.new.from_email !== ME) notifyPoke(payload.new);
+    await reloadPokes(); renderPokes();
     return;
   }
   await loadAll();
@@ -213,8 +216,6 @@ function notifyPoke(row) {
   const msg = `${who.emoji} ${who.name}: ${row.message || '보고싶어!'}`;
   if ('Notification' in window && Notification.permission === 'granted') { try { new Notification('콕! 💗', { body: msg }); } catch {} }
   toast(msg);
-  const log = $('#pokeLog');
-  if (log) log.insertAdjacentHTML('afterbegin', `<div>💗 ${esc(msg)}</div>`);
 }
 
 // ============================================================
@@ -328,13 +329,41 @@ async function pushPartner(msg) {
     });
   } catch (e) {}
 }
+async function reloadPokes() { const r = await DB.poke.recent(); data.pokes = r.data || []; }
 async function sendPoke(msg, hearts) {
   markAct();
   if (hearts) showHearts();
   await write(DB.poke.send({ from_email: ME, message: msg || '보고싶어! 💗' }), '콕! 보냈어 💗');
   pushPartner(msg);
+  await reloadPokes(); renderPokes();
 }
-$('#pokeBtn').onclick = () => sendPoke('보고싶어! 💗', true);
+$('#pokeBtn').onclick = () => {
+  const input = $('#pokeMsg');
+  const msg = (input.value || '').trim() || '보고싶어! 💗';
+  input.value = '';
+  sendPoke(msg, true);
+};
+
+function fmtPokeTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso), now = new Date();
+  let h = d.getHours(); const m = String(d.getMinutes()).padStart(2, '0');
+  const ap = h < 12 ? '오전' : '오후'; h = h % 12 || 12;
+  const sameDay = d.toDateString() === now.toDateString();
+  const datePart = sameDay ? '오늘' : `${d.getMonth() + 1}/${d.getDate()}`;
+  return `${datePart} ${ap} ${h}:${m}`;
+}
+function renderPokes() {
+  const host = $('#pokeLog');
+  if (!host) return;
+  host.innerHTML = (data.pokes || []).map(p => {
+    const who = partner(p.from_email);
+    const mine = p.from_email === ME;
+    return `<div class="poke-row ${mine ? 'mine' : ''}">
+      <span class="poke-msg">${esc(who.emoji)} ${esc(who.name)}: ${esc(p.message)}</span>
+      <span class="poke-time">${esc(fmtPokeTime(p.created_at))}</span></div>`;
+  }).join('') || '<div class="poke-empty">아직 주고받은 콕이 없어 💗</div>';
+}
 
 // ============================================================
 //  홈 — 데이트 추천(룰렛 + 검색 링크)
