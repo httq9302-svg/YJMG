@@ -135,13 +135,16 @@ end $$;
 -- ============================================================
 --  기본 룰렛 항목 살짝 넣어두기 (원하면 앱에서 추가/삭제)
 -- ============================================================
-insert into roulette_options (category, text) values
+-- 테이블이 비어있을 때만 기본 항목 추가 (재실행 시 중복 방지)
+insert into roulette_options (category, text)
+select v.category, v.text from (values
   ('food','떡볶이'),('food','초밥'),('food','파스타'),('food','마라탕'),
   ('food','삼겹살'),('food','치킨'),('food','국밥'),('food','햄버거'),
   ('activity','영화보기'),('activity','카페 가기'),('activity','드라이브'),
   ('activity','집에서 뒹굴기'),('activity','산책'),('activity','보드게임'),
   ('activity','전시회'),('activity','노래방')
-on conflict do nothing;
+) as v(category, text)
+where not exists (select 1 from roulette_options);
 
 -- ============================================================
 --  사진 저장용 Storage 버킷
