@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffb3c6" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>우리 둘만의 공간</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ===================== 로그인 / 잠금화면 ===================== -->
+  <section id="login" class="screen login">
+    <div class="login-card">
+      <div class="login-heart">💕</div>
+      <h1 id="loginTitle">우리 둘만의 공간</h1>
+      <p class="login-sub">둘만 들어올 수 있어요</p>
+      <input id="loginEmail" type="email" inputmode="email" placeholder="이메일" autocomplete="username" />
+      <input id="loginPw" type="password" placeholder="비밀번호" autocomplete="current-password" />
+      <button id="loginBtn" class="btn-primary">들어가기</button>
+      <button id="signupBtn" class="btn-ghost">처음이면 여기로 (회원가입)</button>
+      <p id="loginMsg" class="login-msg"></p>
+    </div>
+  </section>
+
+  <!-- ===================== 메인 앱 ===================== -->
+  <main id="app" class="screen app hidden">
+
+    <!-- 상단 바 -->
+    <header class="topbar">
+      <span id="topTitle">우리 둘만의 공간</span>
+      <button id="logoutBtn" class="icon-btn" title="로그아웃">⏏︎</button>
+    </header>
+
+    <!-- ---------- 홈 ---------- -->
+    <section class="tab" data-tab="home">
+      <div class="dday-card" id="ddayCard"></div>
+
+      <div class="card mood-card">
+        <div class="card-title">오늘의 기분 💗</div>
+        <div id="moodRow" class="mood-row"></div>
+        <div class="mood-edit">
+          <div id="moodPicker" class="mood-picker"></div>
+          <input id="moodMsg" type="text" maxlength="40" placeholder="한마디 남기기" />
+          <button id="moodSave" class="btn-small">저장</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">보고싶을 땐 콕! 👉</div>
+        <button id="pokeBtn" class="btn-poke">콕 찌르기 💗</button>
+        <div id="pokeLog" class="poke-log"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">오늘 뭐할까? 🎲</div>
+        <div class="roulette-tabs">
+          <button class="rl-tab active" data-rl="activity">놀거리</button>
+          <button class="rl-tab" data-rl="food">먹을거</button>
+        </div>
+        <div id="rouletteResult" class="roulette-result">버튼을 눌러봐!</div>
+        <button id="rouletteBtn" class="btn-primary">돌리기 🎰</button>
+        <button id="rouletteManage" class="btn-ghost">항목 관리</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">다가오는 기념일 ✨</div>
+        <div id="upcomingList" class="upcoming-list"></div>
+      </div>
+    </section>
+
+    <!-- ---------- 캘린더 ---------- -->
+    <section class="tab hidden" data-tab="calendar">
+      <div class="cal-head">
+        <button id="calPrev" class="icon-btn">‹</button>
+        <span id="calLabel"></span>
+        <button id="calNext" class="icon-btn">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <button id="addAnnivBtn" class="btn-primary full">+ 기념일 추가</button>
+      <div id="annivList" class="anniv-list"></div>
+    </section>
+
+    <!-- ---------- 버킷리스트 ---------- -->
+    <section class="tab hidden" data-tab="bucket">
+      <div class="seg" id="bucketSeg">
+        <button class="seg-btn active" data-cat="travel">✈️ 여행</button>
+        <button class="seg-btn" data-cat="eat">🍜 먹고싶은</button>
+        <button class="seg-btn" data-cat="buy">🛍️ 사고싶은</button>
+        <button class="seg-btn" data-cat="do">⭐ 하고싶은</button>
+      </div>
+      <div class="add-row">
+        <input id="bucketInput" type="text" placeholder="추가할 항목..." />
+        <button id="bucketAdd" class="btn-small">추가</button>
+      </div>
+      <div id="bucketList" class="bucket-list"></div>
+      <div id="bucketProgress" class="bucket-progress"></div>
+    </section>
+
+    <!-- ---------- 추억 ---------- -->
+    <section class="tab hidden" data-tab="memory">
+      <div class="seg" id="memSeg">
+        <button class="seg-btn active" data-mem="photos">📸 사진첩</button>
+        <button class="seg-btn" data-mem="footprints">🗺️ 발자취</button>
+      </div>
+
+      <div id="memPhotos">
+        <label class="btn-primary full upload-label">
+          + 사진 올리기
+          <input id="photoInput" type="file" accept="image/*" hidden />
+        </label>
+        <div id="photoGrid" class="photo-grid"></div>
+      </div>
+
+      <div id="memFootprints" class="hidden">
+        <button id="addFootBtn" class="btn-primary full">+ 발자취 남기기</button>
+        <div id="footTimeline" class="timeline"></div>
+      </div>
+    </section>
+
+    <!-- ---------- 일기 ---------- -->
+    <section class="tab hidden" data-tab="diary">
+      <div class="card diary-write">
+        <div id="diaryMoodPicker" class="mood-picker"></div>
+        <textarea id="diaryInput" rows="3" placeholder="오늘 하고 싶은 말, 그날의 기분..."></textarea>
+        <button id="diaryAdd" class="btn-primary full">남기기 💌</button>
+      </div>
+      <div id="diaryList" class="diary-list"></div>
+    </section>
+
+    <!-- 하단 탭바 -->
+    <nav class="tabbar">
+      <button class="tabbtn active" data-go="home"><span>🏠</span>홈</button>
+      <button class="tabbtn" data-go="calendar"><span>📅</span>캘린더</button>
+      <button class="tabbtn" data-go="bucket"><span>🪣</span>버킷</button>
+      <button class="tabbtn" data-go="memory"><span>📸</span>추억</button>
+      <button class="tabbtn" data-go="diary"><span>💌</span>일기</button>
+    </nav>
+  </main>
+
+  <!-- 토스트 + 모달 -->
+  <div id="toast" class="toast hidden"></div>
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <div id="modalBody"></div>
+      <div class="modal-actions">
+        <button id="modalCancel" class="btn-ghost">취소</button>
+        <button id="modalOk" class="btn-primary">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

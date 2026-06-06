@@ -1,0 +1,14 @@
+{
+  "name": "우리 둘만의 공간",
+  "short_name": "우리공간",
+  "description": "둘만을 위한 작은 웹앱 💕",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff5f8",
+  "theme_color": "#ffb3c6",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
