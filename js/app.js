@@ -70,13 +70,20 @@ async function tryAuthMsg(promise, okMsg) {
   return true;
 }
 
+// 아이디 → 이메일 (이미 @가 있으면 그대로, 없으면 도메인 자동 추가)
+function idToEmail(v) {
+  v = (v || '').trim().toLowerCase();
+  if (!v) return '';
+  return v.includes('@') ? v : `${v}@${CONFIG.LOGIN_DOMAIN || 'love.com'}`;
+}
+
 $('#loginBtn').onclick = async () => {
-  const email = $('#loginEmail').value.trim(), pw = $('#loginPw').value;
-  if (!email || !pw) return ($('#loginMsg').textContent = '이메일과 비밀번호를 입력해줘');
+  const email = idToEmail($('#loginEmail').value), pw = $('#loginPw').value;
+  if (!email || !pw) return ($('#loginMsg').textContent = '아이디와 비밀번호를 입력해줘');
   await tryAuthMsg(DB.signIn(email, pw));
 };
 $('#signupBtn').onclick = async () => {
-  const email = $('#loginEmail').value.trim(), pw = $('#loginPw').value;
+  const email = idToEmail($('#loginEmail').value), pw = $('#loginPw').value;
   if (!email || pw.length < 6) return ($('#loginMsg').textContent = '비밀번호는 6자 이상');
   if (await tryAuthMsg(DB.signUp(email, pw), '가입 완료! 이제 들어가기를 눌러줘 💕')) {
     // 이메일 인증이 꺼져 있으면 바로 로그인됨
