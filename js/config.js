@@ -7,7 +7,7 @@ const CONFIG = {
   // --- Supabase 연결 정보 -------------------------------------
   // Supabase 대시보드 > Project Settings > API 에서 복사
   SUPABASE_URL: "https://fxhjbwsogsrbzjgfzrfb.supabase.co",
-  SUPABASE_ANON_KEY: "여기에_anon_public_key_를_붙여넣으세요", // eyJ... 로 시작하는 긴 키
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ4aGpid3NvZ3NyYnpqZ2Z6cmZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3Mzg4NDksImV4cCI6MjA5NjMxNDg0OX0.5Dl5hMMCnT7enGrOahMOiTnBSlvb4b2eoShXfCWw_qg",
 
   // --- 우리 커플 정보 ----------------------------------------
   // 사귄 날 (YYYY-MM-DD)
