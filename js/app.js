@@ -73,7 +73,7 @@ function fieldHtml(f) {
     return `<div class="field">${lbl}<input data-k="${f.key}" type="file" accept="image/*" /></div>`;
   if (f.type === 'searchlinks')
     return `<div class="field">${lbl}<div class="search-links">${
-      f.links.map(l => `<button class="btn-link" data-search="${f.from}" data-url="${esc(l.url)}">${esc(l.label)}</button>`).join('')}</div></div>`;
+      f.links.map(l => `<button class="btn-link" data-search="${f.from}" data-url="${esc(l.url)}" data-suffix="${esc(l.suffix||'')}">${esc(l.label)}</button>`).join('')}</div></div>`;
   return `<div class="field">${lbl}<input data-k="${f.key}" type="${f.type||'text'}" placeholder="${esc(f.placeholder||'')}" value="${esc(f.value||'')}" /></div>`;
 }
 
@@ -87,9 +87,10 @@ function modal(title, fields) {
     }));
     $$('[data-search]', body).forEach(b => b.onclick = (e) => {
       e.preventDefault();
-      const q = b.dataset.search.split(',')
+      let q = b.dataset.search.split(',')
         .map(k => { const el = body.querySelector(`[data-k="${k}"]`); return el ? el.value.trim() : ''; })
         .filter(Boolean).join(' ');
+      if (b.dataset.suffix) q = (q + ' ' + b.dataset.suffix).trim();
       if (!q) return toast('이름을 먼저 적어줘');
       window.open(b.dataset.url + encodeURIComponent(q), '_blank');
     });
@@ -473,10 +474,12 @@ function renderBucketTools() {
       <div class="search-links">
         <button class="btn-link" data-q="https://www.diningcode.com/list.dc?query=">다이닝코드</button>
         <button class="btn-link" data-q="https://map.naver.com/p/search/">네이버지도</button>
+        <button class="btn-link" data-q="https://www.youtube.com/results?search_query=" data-suffix="레시피">유튜브레시피</button>
       </div></div>`;
     $$('#bucketTools .btn-link').forEach(b => b.onclick = () => {
-      const q = ($('#eatSearch').value || '').trim();
+      let q = ($('#eatSearch').value || '').trim();
       if (!q) return toast('검색어를 입력해줘');
+      if (b.dataset.suffix) q = q + ' ' + b.dataset.suffix;
       window.open(b.dataset.q + encodeURIComponent(q), '_blank');
     });
   } else host.innerHTML = '';
@@ -487,24 +490,26 @@ async function openBucketAdd(cat) {
   let fields, build;
   if (cat === 'travel') {
     fields = [
-      { key: 'country', label: '나라' },
-      { key: 'region', label: '지역' },
-      { type: 'searchlinks', label: '숙소 찾기 → 링크 복사해서 아래 숙소 링크칸에 붙여넣기', from: 'country,region', links: [
+      { key: 'country', label: '국내 / 해외', type: 'choice', value: '국내', options: [{value:'국내',label:'🇰🇷 국내'},{value:'해외',label:'🌏 해외'}] },
+      { key: 'region', label: '지역', placeholder: '예: 제주도 / 오사카' },
+      { type: 'searchlinks', label: '숙소 찾기 → 링크 복사해서 아래 숙소 링크칸에 붙여넣기', from: 'region', links: [
         { label: '야놀자', url: 'https://www.yanolja.com/search/' },
         { label: '부킹닷컴', url: 'https://www.booking.com/searchresults.ko.html?ss=' },
-        { label: '에어비앤비', url: 'https://www.airbnb.co.kr/s/' } ] },
+        { label: '네이버지도', url: 'https://map.naver.com/p/search/', suffix: '숙소' } ] },
       { key: 'url', label: '숙소 링크 (선택)', placeholder: 'https://...' },
       { key: 'want_date', label: '가고싶은 날짜 (선택)', type: 'date' },
     ];
-    build = v => ({ category: 'travel', title: [v.country, v.region].filter(Boolean).join(' '), country: v.country || null, region: v.region || null, url: v.url || null, want_date: v.want_date || null });
+    build = v => ({ category: 'travel', title: v.region || v.country, country: v.country, region: v.region || null, url: v.url || null, want_date: v.want_date || null });
   } else if (cat === 'eat') {
     fields = [
       { key: 'subcat', label: '종류', type: 'choice', value: '한식', options: ['한식','중식','일식','양식','카페','기타'].map(x=>({value:x,label:x})) },
       { key: 'region', label: '지역 (선택)', placeholder: '예: 망우동' },
       { key: 'title', label: '메뉴 / 맛집 이름' },
-      { type: 'searchlinks', label: '맛집 찾기 (지역+메뉴로 검색) → 링크 복사해서 아래에 붙여넣기', from: 'region,title', links: [
+      { type: 'searchlinks', label: '맛집 찾기 (지역+메뉴로 검색)', from: 'region,title', links: [
         { label: '다이닝코드', url: 'https://www.diningcode.com/list.dc?query=' },
         { label: '네이버지도', url: 'https://map.naver.com/p/search/' } ] },
+      { type: 'searchlinks', label: '레시피 찾기', from: 'title', links: [
+        { label: '유튜브레시피', url: 'https://www.youtube.com/results?search_query=', suffix: '레시피' } ] },
       { key: 'url', label: '링크 (선택)', placeholder: 'https://...' },
     ];
     build = v => ({ category: 'eat', subcat: v.subcat, region: v.region || null, title: v.title, url: v.url || null });
@@ -519,8 +524,12 @@ async function openBucketAdd(cat) {
     fields = [
       { key: 'subcat', label: '종류', type: 'choice', value: '액티비티', options: ['액티비티','문화생활','취미','챌린지','기타'].map(x=>({value:x,label:x})) },
       { key: 'title', label: '하고싶은 것' },
+      { type: 'searchlinks', label: '데이트 코스 찾기', from: 'title', links: [
+        { label: '데이트팝', url: 'https://www.google.com/search?q=', suffix: '데이트팝' },
+        { label: '네이버 검색', url: 'https://search.naver.com/search.naver?query=', suffix: '데이트' } ] },
+      { key: 'url', label: '링크 (선택)', placeholder: 'https://...' },
     ];
-    build = v => ({ category: 'do', subcat: v.subcat, title: v.title });
+    build = v => ({ category: 'do', subcat: v.subcat, title: v.title, url: v.url || null });
   }
   const v = await modal(`${BUCKET_LABEL[cat]} 추가`, fields);
   if (!v) return;

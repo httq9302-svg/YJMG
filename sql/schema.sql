@@ -106,11 +106,12 @@ begin
     'pokes','photos','footprints','roulette_options'
   ]
   loop
-    execute format('alter table %I enable row level security;', t);
-    execute format('drop policy if exists "couple_all" on %I;', t);
-    execute format(
-      'create policy "couple_all" on %I for all to authenticated using (true) with check (true);', t
-    );
+    begin
+      execute format('alter table %I enable row level security;', t);
+      execute format('drop policy if exists "couple_all" on %I;', t);
+      execute format('create policy "couple_all" on %I for all to authenticated using (true) with check (true);', t);
+    exception when others then null;
+    end;
   end loop;
 end $$;
 
@@ -127,7 +128,7 @@ begin
   loop
     begin
       execute format('alter publication supabase_realtime add table %I;', t);
-    exception when duplicate_object then null;
+    exception when others then null;
     end;
   end loop;
 end $$;
@@ -156,6 +157,11 @@ begin
   insert into storage.buckets (id, name, public) values ('photos','photos', true) on conflict (id) do nothing;
 exception when others then null;
 end $$;
+
+-- ============================================================
+--  PostgREST 스키마 캐시 새로고침 (새 컬럼이 바로 인식되도록)
+-- ============================================================
+notify pgrst, 'reload schema';
 
 do $$
 begin
