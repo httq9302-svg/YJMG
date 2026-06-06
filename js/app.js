@@ -310,14 +310,21 @@ function partnerEmail() {
   return Object.keys(CONFIG.PARTNERS || {}).find(e => e !== ME);
 }
 // 상대 폰으로 ntfy 푸시 (앱 꺼져 있어도 알림)
+// JSON 엔드포인트로 보내서 제목·내용 모두 한글/이모지 가능
 async function pushPartner(msg) {
   try {
     const topic = (CONFIG.NTFY_TOPIC || {})[partnerEmail()];
     if (!topic) return;
-    await fetch(`${CONFIG.NTFY_SERVER || 'https://ntfy.sh'}/${topic}`, {
+    await fetch(`${CONFIG.NTFY_SERVER || 'https://ntfy.sh'}`, {
       method: 'POST',
-      headers: { Title: 'MingJae', Tags: 'heart', Click: location.origin + location.pathname },
-      body: `${partner(ME).name}: ${msg || '보고싶어 💗'}`,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic,
+        title: '💗밍재',
+        message: `${partner(ME).name}가 콕! ${msg || '보고싶어 💗'}`,
+        tags: ['heart'],
+        click: location.origin + location.pathname,
+      }),
     });
   } catch (e) {}
 }
