@@ -87,8 +87,9 @@ function modal(title, fields) {
     }));
     $$('[data-search]', body).forEach(b => b.onclick = (e) => {
       e.preventDefault();
-      const ref = body.querySelector(`[data-k="${b.dataset.search}"]`);
-      const q = (ref && ref.value || '').trim();
+      const q = b.dataset.search.split(',')
+        .map(k => { const el = body.querySelector(`[data-k="${k}"]`); return el ? el.value.trim() : ''; })
+        .filter(Boolean).join(' ');
       if (!q) return toast('이름을 먼저 적어줘');
       window.open(b.dataset.url + encodeURIComponent(q), '_blank');
     });
@@ -285,9 +286,10 @@ $$('.rl-tab').forEach(b => b.onclick = () => {
   $$('.rl-tab').forEach(x => x.classList.toggle('active', x === b));
   $('#rouletteResult').textContent = '버튼을 눌러봐!'; $('#recoLinks').innerHTML = '';
 });
+function rouletteSourceCat() { return rlCat === 'cook' ? 'food' : rlCat; }  // 뭐해먹지는 뭐먹지 목록 공용
 $('#rouletteBtn').onclick = () => {
-  const opts = data.roulette.filter(o => o.category === rlCat);
-  if (!opts.length) return toast('항목을 먼저 추가해줘!');
+  const opts = data.roulette.filter(o => o.category === rouletteSourceCat());
+  if (!opts.length) return toast('항목을 먼저 추가해줘! (아래 항목 관리)');
   const res = $('#rouletteResult'); $('#recoLinks').innerHTML = '';
   let n = 0;
   const spin = setInterval(() => {
@@ -303,21 +305,42 @@ $('#rouletteBtn').onclick = () => {
 };
 function renderRecoLinks(cat, q) {
   const enc = encodeURIComponent(q);
-  const links = cat === 'food'
-    ? [['🍽️ 다이닝코드', 'https://www.diningcode.com/list.dc?query=' + enc],
-       ['🗺️ 네이버지도', 'https://map.naver.com/p/search/' + enc],
-       ['📅 캐치테이블', 'https://www.google.com/search?q=' + encodeURIComponent('캐치테이블 ' + q)]]
-    : [['🔎 네이버 검색', 'https://search.naver.com/search.naver?query=' + encodeURIComponent('데이트 ' + q)],
-       ['🗺️ 주변 장소', 'https://map.naver.com/p/search/' + enc]];
+  let links;
+  if (cat === 'food')
+    links = [['🍽️ 다이닝코드', 'https://www.diningcode.com/list.dc?query=' + enc],
+             ['🗺️ 네이버지도', 'https://map.naver.com/p/search/' + enc]];
+  else if (cat === 'cook')
+    links = [['▶️ 유튜브 레시피', 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q + ' 레시피')]];
+  else
+    links = [['💜 데이트팝', 'https://www.google.com/search?q=' + encodeURIComponent('데이트팝 ' + q)],
+             ['🔎 네이버 검색', 'https://search.naver.com/search.naver?query=' + encodeURIComponent('데이트 ' + q)]];
   $('#recoLinks').innerHTML = links.map(([t, u]) => `<a class="btn-link" href="${u}" target="_blank" rel="noopener">${t}</a>`).join('');
 }
-$('#rouletteManage').onclick = async () => {
-  const v = await modal('추천 항목 추가', [
-    { key: 'category', label: '종류', type: 'choice', value: rlCat, options: [{value:'activity',label:'🎡 놀거리'},{value:'food',label:'🍽️ 먹을거'}] },
-    { key: 'text', label: '항목', placeholder: '예: 보드게임 카페 / 마라탕' },
-  ]);
-  if (v && v.text) { markAct(); if (await write(DB.roulette.add({ category: v.category, text: v.text }), '추가됐어!')) await loadAll(); }
-};
+async function reloadRoulette() { const r = await DB.roulette.list(); data.roulette = r.data || []; }
+$('#rouletteManage').onclick = () => manageRoulette();
+function manageRoulette() {
+  const m = $('#modal'), body = $('#modalBody');
+  $('#modalTitle').textContent = '추천 항목 관리';
+  const section = (cat, label) => {
+    const items = data.roulette.filter(o => o.category === cat);
+    return `<div class="list-head">${label}</div>
+      <div class="rl-items">${items.map(o => `<span class="rl-chip">${esc(o.text)}<button data-rldel="${o.id}">✕</button></span>`).join('') || '<span class="empty" style="padding:6px 0">없음</span>'}</div>
+      <div class="add-row"><input data-rladd="${cat}" placeholder="추가할 항목..." /><button class="btn-small" data-rladdbtn="${cat}">추가</button></div>`;
+  };
+  const render = () => {
+    body.innerHTML = section('activity', '🎡 뭐할까') + section('food', '🍽️ 뭐먹지 (뭐해먹지 공용)');
+    $$('[data-rldel]', body).forEach(b => b.onclick = async () => { markAct(); await DB.roulette.remove(+b.dataset.rldel); await reloadRoulette(); render(); });
+    $$('[data-rladdbtn]', body).forEach(b => b.onclick = async () => {
+      const inp = body.querySelector(`[data-rladd="${b.dataset.rladdbtn}"]`);
+      const t = (inp.value || '').trim(); if (!t) return;
+      markAct(); await write(DB.roulette.add({ category: b.dataset.rladdbtn, text: t })); await reloadRoulette(); render();
+    });
+  };
+  render();
+  m.classList.remove('hidden');
+  $('#modalCancel').onclick = () => m.classList.add('hidden');
+  $('#modalOk').onclick = () => m.classList.add('hidden');
+}
 
 // ============================================================
 //  홈 — 다가오는 기념일 (반복 지원)
@@ -450,7 +473,6 @@ function renderBucketTools() {
       <div class="search-links">
         <button class="btn-link" data-q="https://www.diningcode.com/list.dc?query=">다이닝코드</button>
         <button class="btn-link" data-q="https://map.naver.com/p/search/">네이버지도</button>
-        <button class="btn-link" data-q="https://www.google.com/search?q=캐치테이블+">캐치테이블</button>
       </div></div>`;
     $$('#bucketTools .btn-link').forEach(b => b.onclick = () => {
       const q = ($('#eatSearch').value || '').trim();
@@ -465,39 +487,47 @@ async function openBucketAdd(cat) {
   let fields, build;
   if (cat === 'travel') {
     fields = [
-      { key: 'country', label: '국내 / 국외', type: 'choice', value: '국내', options: [{value:'국내',label:'🇰🇷 국내'},{value:'국외',label:'🌏 국외'}] },
-      { key: 'title', label: '여행지', placeholder: '예: 제주도 / 오사카' },
-      { key: 'region', label: '나라·지역 (선택)', placeholder: '예: 일본 간사이 / 강원도' },
+      { key: 'country', label: '나라' },
+      { key: 'region', label: '지역' },
+      { type: 'searchlinks', label: '숙소 찾기 → 링크 복사해서 아래 숙소 링크칸에 붙여넣기', from: 'country,region', links: [
+        { label: '야놀자', url: 'https://www.yanolja.com/search/' },
+        { label: '부킹닷컴', url: 'https://www.booking.com/searchresults.ko.html?ss=' },
+        { label: '에어비앤비', url: 'https://www.airbnb.co.kr/s/' } ] },
+      { key: 'url', label: '숙소 링크 (선택)', placeholder: 'https://...' },
       { key: 'want_date', label: '가고싶은 날짜 (선택)', type: 'date' },
     ];
-    build = v => ({ category: 'travel', title: v.title, country: v.country, region: v.region, want_date: v.want_date || null });
+    build = v => ({ category: 'travel', title: [v.country, v.region].filter(Boolean).join(' '), country: v.country || null, region: v.region || null, url: v.url || null, want_date: v.want_date || null });
   } else if (cat === 'eat') {
     fields = [
       { key: 'subcat', label: '종류', type: 'choice', value: '한식', options: ['한식','중식','일식','양식','카페','기타'].map(x=>({value:x,label:x})) },
-      { key: 'title', label: '메뉴 / 맛집 이름', placeholder: '예: 스시오마카세' },
-      { type: 'searchlinks', label: '맛집 찾기 → 링크 복사해서 아래에 붙여넣기', from: 'title', links: [
+      { key: 'region', label: '지역 (선택)', placeholder: '예: 망우동' },
+      { key: 'title', label: '메뉴 / 맛집 이름' },
+      { type: 'searchlinks', label: '맛집 찾기 (지역+메뉴로 검색) → 링크 복사해서 아래에 붙여넣기', from: 'region,title', links: [
         { label: '다이닝코드', url: 'https://www.diningcode.com/list.dc?query=' },
-        { label: '네이버지도', url: 'https://map.naver.com/p/search/' },
-        { label: '캐치테이블', url: 'https://www.google.com/search?q=캐치테이블+' } ] },
+        { label: '네이버지도', url: 'https://map.naver.com/p/search/' } ] },
       { key: 'url', label: '링크 (선택)', placeholder: 'https://...' },
     ];
-    build = v => ({ category: 'eat', subcat: v.subcat, title: v.title, url: v.url || null });
+    build = v => ({ category: 'eat', subcat: v.subcat, region: v.region || null, title: v.title, url: v.url || null });
   } else if (cat === 'buy') {
     fields = [
       { key: 'subcat', label: '종류', type: 'choice', value: '패션', options: ['패션','전자기기','리빙','뷰티','기타'].map(x=>({value:x,label:x})) },
-      { key: 'title', label: '사고싶은 것', placeholder: '예: 커플 후드티' },
+      { key: 'title', label: '사고싶은 것' },
       { key: 'url', label: '링크 (선택)', placeholder: 'https://...' },
     ];
     build = v => ({ category: 'buy', subcat: v.subcat, title: v.title, url: v.url || null });
   } else {
     fields = [
       { key: 'subcat', label: '종류', type: 'choice', value: '액티비티', options: ['액티비티','문화생활','취미','챌린지','기타'].map(x=>({value:x,label:x})) },
-      { key: 'title', label: '하고싶은 것', placeholder: '예: 번지점프' },
+      { key: 'title', label: '하고싶은 것' },
     ];
     build = v => ({ category: 'do', subcat: v.subcat, title: v.title });
   }
   const v = await modal(`${BUCKET_LABEL[cat]} 추가`, fields);
-  if (v && v.title) { markAct(); if (await write(DB.bucket.add({ ...build(v), created_by: ME }), '추가됐어 ✨')) await loadAll(); }
+  if (!v) return;
+  const row = build(v);
+  if (!row.title) return toast('내용을 입력해줘');
+  markAct();
+  if (await write(DB.bucket.add({ ...row, created_by: ME }), '추가됐어 ✨')) await loadAll();
 }
 
 function renderBucket() {

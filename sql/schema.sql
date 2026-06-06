@@ -150,18 +150,20 @@ where not exists (select 1 from roulette_options);
 --  사진 저장용 Storage 버킷
 --  (대시보드 Storage 에서 'photos' 버킷을 Public 으로 만들어도 됩니다)
 -- ============================================================
-insert into storage.buckets (id, name, public)
-values ('photos','photos', true)
-on conflict (id) do nothing;
+-- 권한 문제로 실패해도 전체가 롤백되지 않도록 감쌈
+do $$
+begin
+  insert into storage.buckets (id, name, public) values ('photos','photos', true) on conflict (id) do nothing;
+exception when others then null;
+end $$;
 
-drop policy if exists "photos_read" on storage.objects;
-create policy "photos_read" on storage.objects
-  for select using (bucket_id = 'photos');
-
-drop policy if exists "photos_write" on storage.objects;
-create policy "photos_write" on storage.objects
-  for insert to authenticated with check (bucket_id = 'photos');
-
-drop policy if exists "photos_delete" on storage.objects;
-create policy "photos_delete" on storage.objects
-  for delete to authenticated using (bucket_id = 'photos');
+do $$
+begin
+  drop policy if exists "photos_read" on storage.objects;
+  create policy "photos_read"   on storage.objects for select using (bucket_id = 'photos');
+  drop policy if exists "photos_write" on storage.objects;
+  create policy "photos_write"  on storage.objects for insert to authenticated with check (bucket_id = 'photos');
+  drop policy if exists "photos_delete" on storage.objects;
+  create policy "photos_delete" on storage.objects for delete to authenticated using (bucket_id = 'photos');
+exception when others then null;
+end $$;

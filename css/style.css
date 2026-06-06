@@ -312,6 +312,9 @@ textarea { resize: none; }
 /* 추천 박스 */
 .reco-links { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 10px; }
 .reco-card .btn-primary.full { margin-bottom: 6px; }
+.rl-items { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+.rl-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--pink-bg); border-radius: 10px; padding: 5px 6px 5px 10px; font-size: 13px; }
+.rl-chip button { background: none; color: var(--ink-lt); font-size: 13px; padding: 0 2px; }
 
 /* 캘린더 */
 .cal-cell.sel { outline: 2px solid var(--pink); }
