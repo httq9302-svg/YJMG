@@ -341,6 +341,10 @@ textarea { resize: none; }
   position: absolute; top: 4px; right: 4px; z-index: 2; width: 24px; height: 24px;
   border-radius: 50%; background: rgba(0,0,0,.5); color: #fff; font-size: 13px; line-height: 1;
 }
+.photo-pin {
+  position: absolute; top: 4px; left: 4px; z-index: 2; width: 24px; height: 24px;
+  border-radius: 50%; background: rgba(0,0,0,.5); font-size: 12px; line-height: 1;
+}
 .photo-img { cursor: zoom-in; }
 .cap { font-size: 12px; font-weight: 700; margin-top: 3px; text-align: center; }
 .cap-date { font-size: 11px; color: var(--ink-lt); text-align: center; }

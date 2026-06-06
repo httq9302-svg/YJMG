@@ -596,6 +596,7 @@ function renderPhotos() {
   const host = $('#photoGrid');
   host.innerHTML = data.photos.length ? data.photos.map(p => `
     <div class="photo-cell">
+      <button class="photo-pin" data-pin-photo="${esc(p.url)}" title="위젯 배경으로">📌</button>
       <button class="photo-del" data-del-photo="${p.id}">✕</button>
       <img class="photo-img" src="${esc(p.url)}" data-lb="${p.id}" />
       ${p.title ? `<div class="cap">${esc(p.title)}</div>` : ''}
@@ -604,6 +605,9 @@ function renderPhotos() {
   $$('[data-lb]', host).forEach(img => img.onclick = () => {
     const p = data.photos.find(x => x.id == img.dataset.lb);
     openLightbox(p.url, [p.title, p.taken_date].filter(Boolean).join(' · '));
+  });
+  $$('[data-pin-photo]', host).forEach(b => b.onclick = async () => {
+    markAct(); await write(DB.widget.set(b.dataset.pinPhoto), '위젯 배경으로 설정했어 📌 (위젯은 잠시 뒤 바뀜)');
   });
   $$('[data-del-photo]', host).forEach(b => b.onclick = async () => {
     if (await confirmBox('이 사진을 삭제할까?')) { markAct(); await DB.photos.remove(+b.dataset.delPhoto); await loadAll(); }

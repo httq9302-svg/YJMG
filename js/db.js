@@ -77,6 +77,11 @@ const DB = {
     },
   },
 
+  // ---------- 위젯 배경 사진 ----------
+  widget: {
+    set: (url) => sb.from('widget_config').upsert({ id: 1, photo_url: url, updated_at: new Date().toISOString() }),
+  },
+
   // ---------- 발자취 ----------
   footprints: {
     list: () => sb.from('footprints').select('*').order('date', { ascending: false }),

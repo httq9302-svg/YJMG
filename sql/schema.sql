@@ -159,6 +159,24 @@ exception when others then null;
 end $$;
 
 -- ============================================================
+--  위젯 배경 사진 (앱에서 📌로 지정, 위젯이 anon으로 읽음)
+-- ============================================================
+create table if not exists widget_config (
+  id         int primary key default 1,
+  photo_url  text,
+  updated_at timestamptz default now()
+);
+do $$
+begin
+  alter table widget_config enable row level security;
+  drop policy if exists "widget_read"  on widget_config;
+  create policy "widget_read"  on widget_config for select to anon, authenticated using (true);
+  drop policy if exists "widget_write" on widget_config;
+  create policy "widget_write" on widget_config for all to authenticated using (true) with check (true);
+exception when others then null;
+end $$;
+
+-- ============================================================
 --  PostgREST 스키마 캐시 새로고침 (새 컬럼이 바로 인식되도록)
 -- ============================================================
 notify pgrst, 'reload schema';
