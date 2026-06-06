@@ -166,6 +166,7 @@ async function enterApp(user) {
   buildMoodPickers();
   await loadAll();
   DB.subscribe(onRealtime);
+  handleDeepLink();
 }
 
 // ============================================================
@@ -219,11 +220,45 @@ function notifyPoke(row) {
 // ============================================================
 //  탭
 // ============================================================
-$$('.tabbtn').forEach(btn => btn.onclick = () => {
-  const go = btn.dataset.go;
-  $$('.tabbtn').forEach(b => b.classList.toggle('active', b === btn));
+function switchTab(go) {
+  $$('.tabbtn').forEach(b => b.classList.toggle('active', b.dataset.go === go));
   $$('.tab').forEach(t => t.classList.toggle('hidden', t.dataset.tab !== go));
-});
+}
+$$('.tabbtn').forEach(btn => btn.onclick = () => switchTab(btn.dataset.go));
+
+// ---------- 하트 애니메이션 ----------
+function showHearts() {
+  const box = document.createElement('div');
+  box.className = 'hearts';
+  const emojis = ['💗','💕','💞','💝','🩷','💖'];
+  for (let i = 0; i < 14; i++) {
+    const s = document.createElement('span');
+    s.className = 'heart';
+    s.textContent = emojis[i % emojis.length];
+    s.style.left = (5 + Math.random() * 90) + '%';
+    s.style.animationDelay = (Math.random() * 0.5) + 's';
+    s.style.fontSize = (22 + Math.random() * 24) + 'px';
+    box.appendChild(s);
+  }
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 2600);
+}
+
+// ---------- NFC / 딥링크 (?go=poke 등) ----------
+async function handleDeepLink() {
+  const p = new URLSearchParams(location.search);
+  const go = p.get('go');
+  if (!go) return;
+  history.replaceState(null, '', location.pathname); // 새로고침 시 재실행 방지
+  if (go === 'poke') {
+    switchTab('home');
+    showHearts();
+    markAct();
+    await write(DB.poke.send({ from_email: ME, message: p.get('msg') || '보고싶어! 💗' }), '콕! 보냈어 💗');
+  } else if (['home','calendar','bucket','memory','diary'].includes(go)) {
+    switchTab(go);
+  }
+}
 
 // ============================================================
 //  홈 — D-day
