@@ -30,6 +30,8 @@ const CONFIG = {
   // --- ntfy 푸시 알림 (앱 꺼져 있어도 콕 알림) ----------------
   // 각자 "자기 topic"을 ntfy 앱에서 구독. 상대가 콕 누르면 내 topic으로 푸시가 옴.
   NTFY_SERVER: "https://ntfy.sh",
+  // 콕 알림에 자동으로 뜨는 하트 아이콘 (png/jpg URL)
+  NTFY_ICON: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f497.png",
   NTFY_TOPIC: {
     "mg@love.com": "mingjae-mg-8f3k2qx9z",  // 민구(MG)가 받을 알림 → 민구가 ntfy에서 이 topic 구독
     "yj@love.com": "mingjae-yj-7d9w4ze1p",  // 이재(YJ)가 받을 알림 → 이재가 ntfy에서 이 topic 구독

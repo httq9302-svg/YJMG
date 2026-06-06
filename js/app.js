@@ -324,6 +324,7 @@ async function pushPartner(msg) {
         title: '💗밍재',
         message: `${partner(ME).name}가 콕! ${msg || '보고싶어 💗'}`,
         tags: ['heart'],
+        icon: CONFIG.NTFY_ICON || undefined,
         click: location.origin + location.pathname,
       }),
     });
