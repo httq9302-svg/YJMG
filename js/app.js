@@ -252,9 +252,7 @@ async function handleDeepLink() {
   history.replaceState(null, '', location.pathname); // 새로고침 시 재실행 방지
   if (go === 'poke') {
     switchTab('home');
-    showHearts();
-    markAct();
-    await write(DB.poke.send({ from_email: ME, message: p.get('msg') || '보고싶어! 💗' }), '콕! 보냈어 💗');
+    await sendPoke(p.get('msg') || '보고싶어! 💗', true);
   } else if (['home','calendar','bucket','memory','diary'].includes(go)) {
     switchTab(go);
   }
@@ -308,10 +306,28 @@ $('#moodSave').onclick = async () => {
 // ============================================================
 //  홈 — 콕
 // ============================================================
-$('#pokeBtn').onclick = async () => {
+function partnerEmail() {
+  return Object.keys(CONFIG.PARTNERS || {}).find(e => e !== ME);
+}
+// 상대 폰으로 ntfy 푸시 (앱 꺼져 있어도 알림)
+async function pushPartner(msg) {
+  try {
+    const topic = (CONFIG.NTFY_TOPIC || {})[partnerEmail()];
+    if (!topic) return;
+    await fetch(`${CONFIG.NTFY_SERVER || 'https://ntfy.sh'}/${topic}`, {
+      method: 'POST',
+      headers: { Title: 'MingJae', Tags: 'heart', Click: location.origin + location.pathname },
+      body: `${partner(ME).name}: ${msg || '보고싶어 💗'}`,
+    });
+  } catch (e) {}
+}
+async function sendPoke(msg, hearts) {
   markAct();
-  if (await write(DB.poke.send({ from_email: ME, message: '보고싶어! 💗' }), '콕! 보냈어 💗')) {}
-};
+  if (hearts) showHearts();
+  await write(DB.poke.send({ from_email: ME, message: msg || '보고싶어! 💗' }), '콕! 보냈어 💗');
+  pushPartner(msg);
+}
+$('#pokeBtn').onclick = () => sendPoke('보고싶어! 💗', true);
 
 // ============================================================
 //  홈 — 데이트 추천(룰렛 + 검색 링크)

@@ -26,4 +26,12 @@ const CONFIG = {
   // 제목
   APP_TAGLINE: "세상에 하나뿐인",
   APP_TITLE: "민구 💗 이재 STORY",
+
+  // --- ntfy 푸시 알림 (앱 꺼져 있어도 콕 알림) ----------------
+  // 각자 "자기 topic"을 ntfy 앱에서 구독. 상대가 콕 누르면 내 topic으로 푸시가 옴.
+  NTFY_SERVER: "https://ntfy.sh",
+  NTFY_TOPIC: {
+    "mg@love.com": "mingjae-mg-8f3k2qx9z",  // 민구(MG)가 받을 알림 → 민구가 ntfy에서 이 topic 구독
+    "yj@love.com": "mingjae-yj-7d9w4ze1p",  // 이재(YJ)가 받을 알림 → 이재가 ntfy에서 이 topic 구독
+  },
 };
