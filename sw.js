@@ -1,5 +1,5 @@
 // 아주 단순한 서비스워커 — 오프라인 캐시 + 설치 가능
-const CACHE = 'uri-gonggan-v3';
+const CACHE = 'uri-gonggan-v4';
 const ASSETS = [
   './', './index.html', './css/style.css',
   './js/config.js', './js/db.js', './js/app.js',
