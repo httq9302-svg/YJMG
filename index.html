@@ -6,17 +6,18 @@
   <meta name="theme-color" content="#ffb3c6" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>우리 둘만의 공간</title>
+  <title>민구 💗 이재 STORY</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
 
-  <!-- ===================== 로그인 / 잠금화면 ===================== -->
+  <!-- ===================== 로그인 ===================== -->
   <section id="login" class="screen login">
     <div class="login-card">
       <div class="login-heart">💕</div>
-      <h1 id="loginTitle">우리 둘만의 공간</h1>
+      <p class="login-tag" id="loginTag">세상에 하나뿐인</p>
+      <h1 id="loginTitle">민구 💗 이재 STORY</h1>
       <p class="login-sub">둘만 들어올 수 있어요</p>
       <input id="loginEmail" type="text" inputmode="text" placeholder="아이디" autocomplete="username" autocapitalize="off" />
       <input id="loginPw" type="password" placeholder="비밀번호" autocomplete="current-password" />
@@ -29,15 +30,22 @@
   <!-- ===================== 메인 앱 ===================== -->
   <main id="app" class="screen app hidden">
 
-    <!-- 상단 바 -->
     <header class="topbar">
-      <span id="topTitle">우리 둘만의 공간</span>
+      <div class="topbar-title">
+        <span class="tag" id="topTag">세상에 하나뿐인</span>
+        <span id="topTitle">민구 💗 이재 STORY</span>
+      </div>
       <button id="logoutBtn" class="icon-btn" title="로그아웃">⏏︎</button>
     </header>
 
     <!-- ---------- 홈 ---------- -->
     <section class="tab" data-tab="home">
       <div class="dday-card" id="ddayCard"></div>
+
+      <div class="card">
+        <div class="card-title">다가오는 기념일 ✨</div>
+        <div id="upcomingList" class="upcoming-list"></div>
+      </div>
 
       <div class="card mood-card">
         <div class="card-title">오늘의 기분 💗</div>
@@ -55,20 +63,16 @@
         <div id="pokeLog" class="poke-log"></div>
       </div>
 
-      <div class="card">
-        <div class="card-title">오늘 뭐할까? 🎲</div>
+      <div class="card reco-card">
+        <div class="card-title">오늘의 데이트 추천 ✨</div>
         <div class="roulette-tabs">
-          <button class="rl-tab active" data-rl="activity">놀거리</button>
-          <button class="rl-tab" data-rl="food">먹을거</button>
+          <button class="rl-tab active" data-rl="activity">🎡 뭐할까</button>
+          <button class="rl-tab" data-rl="food">🍽️ 뭐먹지</button>
         </div>
         <div id="rouletteResult" class="roulette-result">버튼을 눌러봐!</div>
-        <button id="rouletteBtn" class="btn-primary">돌리기 🎰</button>
-        <button id="rouletteManage" class="btn-ghost">항목 관리</button>
-      </div>
-
-      <div class="card">
-        <div class="card-title">다가오는 기념일 ✨</div>
-        <div id="upcomingList" class="upcoming-list"></div>
+        <div id="recoLinks" class="reco-links"></div>
+        <button id="rouletteBtn" class="btn-primary full">추천 받기 🎰</button>
+        <button id="rouletteManage" class="btn-ghost">항목 직접 추가/관리</button>
       </div>
     </section>
 
@@ -80,7 +84,12 @@
         <button id="calNext" class="icon-btn">›</button>
       </div>
       <div class="cal-grid" id="calGrid"></div>
+
+      <div id="calDayPanel" class="card day-panel hidden"></div>
+
       <button id="addAnnivBtn" class="btn-primary full">+ 기념일 추가</button>
+
+      <div class="list-head">전체 일정 📋</div>
       <div id="annivList" class="anniv-list"></div>
     </section>
 
@@ -92,10 +101,8 @@
         <button class="seg-btn" data-cat="buy">🛍️ 사고싶은</button>
         <button class="seg-btn" data-cat="do">⭐ 하고싶은</button>
       </div>
-      <div class="add-row">
-        <input id="bucketInput" type="text" placeholder="추가할 항목..." />
-        <button id="bucketAdd" class="btn-small">추가</button>
-      </div>
+      <div id="bucketTools"></div>
+      <button id="bucketAddBtn" class="btn-primary full">+ 추가</button>
       <div id="bucketList" class="bucket-list"></div>
       <div id="bucketProgress" class="bucket-progress"></div>
     </section>
@@ -131,7 +138,6 @@
       <div id="diaryList" class="diary-list"></div>
     </section>
 
-    <!-- 하단 탭바 -->
     <nav class="tabbar">
       <button class="tabbtn active" data-go="home"><span>🏠</span>홈</button>
       <button class="tabbtn" data-go="calendar"><span>📅</span>캘린더</button>
@@ -141,10 +147,11 @@
     </nav>
   </main>
 
-  <!-- 토스트 + 모달 -->
+  <!-- 토스트 / 모달 / 라이트박스 -->
   <div id="toast" class="toast hidden"></div>
   <div id="modal" class="modal hidden">
     <div class="modal-card">
+      <h3 id="modalTitle"></h3>
       <div id="modalBody"></div>
       <div class="modal-actions">
         <button id="modalCancel" class="btn-ghost">취소</button>
@@ -152,8 +159,12 @@
       </div>
     </div>
   </div>
+  <div id="lightbox" class="lightbox hidden">
+    <button id="lbClose" class="lb-close">✕</button>
+    <img id="lbImg" src="" alt="" />
+    <div id="lbCap" class="lb-cap"></div>
+  </div>
 
-  <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script src="js/db.js"></script>

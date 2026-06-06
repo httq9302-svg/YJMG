@@ -80,6 +80,21 @@ create table if not exists roulette_options (
 );
 
 -- ============================================================
+--  v2 추가 컬럼 (재실행 안전 — 이미 있으면 무시)
+-- ============================================================
+alter table anniversaries add column if not exists repeat text default 'none'; -- none|weekly|monthly|yearly
+alter table bucket_items  add column if not exists subcat   text;
+alter table bucket_items  add column if not exists country  text;   -- 국내|국외
+alter table bucket_items  add column if not exists region   text;
+alter table bucket_items  add column if not exists want_date date;
+alter table bucket_items  add column if not exists url      text;
+alter table photos        add column if not exists title    text;
+alter table footprints    add column if not exists photo_url text;
+
+-- 기존 yearly=true 데이터를 repeat='yearly' 로 한 번 정리
+update anniversaries set repeat = 'yearly' where yearly = true and (repeat is null or repeat = 'none');
+
+-- ============================================================
 --  RLS (Row Level Security)
 --  로그인한 사용자(우리 둘)만 모든 작업 허용
 -- ============================================================

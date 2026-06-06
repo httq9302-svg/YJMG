@@ -283,3 +283,78 @@ textarea { resize: none; }
 .modal-actions button { flex: 1; }
 
 .empty { text-align: center; color: var(--ink-lt); font-size: 14px; padding: 24px 0; }
+
+/* ============================================================
+   v2 추가 스타일
+   ============================================================ */
+/* 제목 */
+.login-tag { margin: 0; font-size: 13px; color: var(--ink-lt); }
+.login h1 { font-size: 20px; }
+.topbar { align-items: center; }
+.topbar-title { display: flex; flex-direction: column; line-height: 1.2; }
+.topbar-title .tag { font-size: 11px; font-weight: 600; color: var(--ink-lt); }
+.topbar-title #topTitle { font-size: 16px; font-weight: 800; }
+
+/* 모달 — 이모지/선택 버튼 */
+#modalTitle { margin: 0 0 14px; font-size: 17px; }
+.field-note { font-size: 12px; color: var(--ink-lt); background: var(--pink-bg); padding: 8px 10px; border-radius: 10px; margin-bottom: 10px; }
+.mc-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.emoji-group button { font-size: 22px; width: 40px; height: 40px; border-radius: 10px; background: var(--pink-bg); }
+.emoji-group button.sel { background: var(--pink-lt); outline: 2px solid var(--pink); }
+.choice-group button { padding: 8px 12px; border-radius: 10px; background: var(--pink-bg); font-size: 13px; font-weight: 700; color: var(--ink-lt); }
+.choice-group button.sel { background: var(--pink); color: #fff; }
+.search-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.btn-link {
+  display: inline-block; background: var(--pink-bg); color: var(--pink); font-weight: 700;
+  font-size: 12px; padding: 8px 11px; border-radius: 10px; text-decoration: none; border: 1px solid var(--pink-lt);
+}
+
+/* 추천 박스 */
+.reco-links { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 10px; }
+.reco-card .btn-primary.full { margin-bottom: 6px; }
+
+/* 캘린더 */
+.cal-cell.sel { outline: 2px solid var(--pink); }
+.list-head { font-weight: 800; font-size: 14px; margin: 6px 2px 2px; }
+.day-panel { display: flex; flex-direction: column; gap: 6px; }
+.day-panel #dayAdd { align-self: flex-start; }
+.anniv-item .date { font-size: 12px; color: var(--ink-lt); }
+
+/* 검색 행 (버킷 먹고싶은) */
+.search-row { background: var(--card); border-radius: 14px; padding: 12px; box-shadow: var(--shadow); margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
+
+/* 버킷 아이템 */
+.bcontent { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.bmeta { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.badge { font-size: 11px; background: var(--pink-bg); color: var(--ink-lt); padding: 3px 8px; border-radius: 8px; font-weight: 700; }
+.badge.want { background: #fff0e6; color: var(--peach); }
+.badge.link { color: var(--pink); text-decoration: none; border: 1px solid var(--pink-lt); }
+.breg { font-size: 11px; color: #bcaeb5; }
+
+/* 사진첩 */
+.photo-grid { align-items: start; }
+.photo-cell { position: relative; }
+.photo-del {
+  position: absolute; top: 4px; right: 4px; z-index: 2; width: 24px; height: 24px;
+  border-radius: 50%; background: rgba(0,0,0,.5); color: #fff; font-size: 13px; line-height: 1;
+}
+.photo-img { cursor: zoom-in; }
+.cap { font-size: 12px; font-weight: 700; margin-top: 3px; text-align: center; }
+.cap-date { font-size: 11px; color: var(--ink-lt); text-align: center; }
+
+/* 발자취 사진 */
+.tl-photo { width: 100%; border-radius: 12px; margin-top: 8px; cursor: zoom-in; }
+.tl-del { position: absolute; top: 8px; right: 10px; }
+.tl-card { position: relative; }
+
+/* 라이트박스 */
+.lightbox {
+  position: fixed; inset: 0; background: rgba(0,0,0,.9); z-index: 80;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;
+}
+.lightbox img { max-width: 100%; max-height: 82vh; border-radius: 10px; }
+.lb-cap { color: #fff; font-size: 14px; margin-top: 12px; text-align: center; }
+.lb-close {
+  position: absolute; top: max(16px, env(safe-area-inset-top)); right: 16px;
+  width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.2); color: #fff; font-size: 18px;
+}

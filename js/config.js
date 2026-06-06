@@ -23,7 +23,7 @@ const CONFIG = {
     "yj@love.com":  { name: "자기", emoji: "🐰" },
   },
 
-  // 잠금화면 문구
-  APP_TITLE: "우리 둘만의 공간",
-  APP_SUBTITLE: "💕",
+  // 제목
+  APP_TAGLINE: "세상에 하나뿐인",
+  APP_TITLE: "민구 💗 이재 STORY",
 };
