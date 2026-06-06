@@ -123,7 +123,22 @@ async function loadAll() {
   data.photos        = ph.data || [];
   data.footprints    = f.data || [];
   data.roulette      = r.data || [];
+  // 테이블이 없으면(=SQL 미실행) 안내
+  const errs = [a, b, d, s, ph, f, r].map(x => x.error).filter(Boolean);
+  if (errs.some(e => /does not exist|relation/i.test(e.message || ''))) {
+    toast('⚠️ DB가 아직 없어요. Supabase에서 SQL을 먼저 실행해줘!');
+  } else if (errs.length) {
+    toast('⚠️ ' + (errs[0].message || '데이터 로드 오류'));
+  }
   renderAll();
+}
+
+// 쓰기 작업 실행 + 에러 토스트 (성공 시 okMsg)
+async function write(promise, okMsg) {
+  const res = await promise;
+  if (res && res.error) { toast('⚠️ ' + (res.error.message || '저장 실패')); return false; }
+  if (okMsg) toast(okMsg);
+  return true;
 }
 function renderAll() {
   renderDday(); renderMood(); renderUpcoming();
@@ -219,8 +234,11 @@ function renderMood() {
 }
 $('#moodSave').onclick = async () => {
   markAct();
-  await DB.status.set({ user_email: ME, mood: pickedMood, message: $('#moodMsg').value.trim() });
-  toast('기분 저장됐어 💗'); await loadAll();
+  const ok = await write(
+    DB.status.set({ user_email: ME, mood: pickedMood, message: $('#moodMsg').value.trim() }),
+    '기분 저장됐어 💗'
+  );
+  if (ok) await loadAll();
 };
 
 // ============================================================
