@@ -164,6 +164,7 @@ async function enterApp(user) {
   $('#topTag').textContent = CONFIG.APP_TAGLINE || '';
   if ('Notification' in window && Notification.permission === 'default') { try { Notification.requestPermission(); } catch {} }
   buildMoodPickers();
+  buildCalTabs();
   await loadAll();
   DB.subscribe(onRealtime);
   handleDeepLink();
@@ -484,16 +485,40 @@ function renderUpcoming() {
 // ============================================================
 $('#calPrev').onclick = () => { calRef = new Date(calRef.getFullYear(), calRef.getMonth() - 1, 1); renderCalendar(); };
 $('#calNext').onclick = () => { calRef = new Date(calRef.getFullYear(), calRef.getMonth() + 1, 1); renderCalendar(); };
-$$('#calSeg .seg-btn').forEach(b => b.onclick = () => {
-  calCat = b.dataset.cal;
-  $$('#calSeg .seg-btn').forEach(x => x.classList.toggle('active', x === b));
-  renderCalendar();
-});
+
+// 탭: 기념일 / 여행 / (사람별 일정) / 공통일정 — 동적 생성
+function buildCalTabs() {
+  const emails = Object.keys(CONFIG.PARTNERS || {});
+  const tabs = [
+    { cal: 'anniversary', label: '🎉기념일' },
+    { cal: 'travel', label: '✈️여행' },
+    ...emails.map(e => ({ cal: 'sched:' + e, label: `${partner(e).emoji}${partner(e).name} 일정` })),
+    { cal: 'sched:both', label: '👫공통일정' },
+  ];
+  calCat = tabs[0].cal;
+  const host = $('#calSeg');
+  host.innerHTML = tabs.map((t, i) => `<button class="seg-btn ${i === 0 ? 'active' : ''}" data-cal="${esc(t.cal)}">${esc(t.label)}</button>`).join('');
+  $$('#calSeg .seg-btn').forEach(b => b.onclick = () => {
+    calCat = b.dataset.cal;
+    $$('#calSeg .seg-btn').forEach(x => x.classList.toggle('active', x === b));
+    renderCalendar();
+  });
+}
+function matchCat(e) {
+  if (calCat === 'anniversary') return e.category === 'anniversary';
+  if (calCat === 'travel') return e.category === 'travel';
+  if (calCat && calCat.startsWith('sched:')) {
+    if (e.category !== 'schedule') return false;
+    const who = calCat.slice(6);
+    return who === 'both' ? (!e.owner || e.owner === 'both') : e.owner === who;
+  }
+  return true;
+}
 
 function eventsOnDay(y, m, d) {
   const cell = new Date(y, m, d); cell.setHours(0, 0, 0, 0);
   return (data.events || []).filter(e => {
-    if (calCat !== 'all' && e.category !== calCat) return false;
+    if (!matchCat(e)) return false;
     const start = evStart(e); start.setHours(0, 0, 0, 0);
     const rep = repeatOf(e);
     if (e.category === 'anniversary' && rep !== 'none') {
@@ -523,7 +548,7 @@ function renderCalendar() {
   $('#calGrid').innerHTML = html;
   $$('#calGrid .cal-cell[data-day]').forEach(c => c.onclick = () => { selectedDay = { y, m, d: +c.dataset.day }; renderCalendar(); renderDayPanel(); });
 
-  const list = (data.events || []).filter(e => calCat === 'all' || e.category === calCat)
+  const list = (data.events || []).filter(matchCat)
     .sort((a, b) => a.start_date.localeCompare(b.start_date));
   $('#eventList').innerHTML = list.length ? list.map(e => `
     <div class="anniv-item"><span class="emo">${esc(e.emoji)}</span>
@@ -551,7 +576,7 @@ async function openEventModal(presetDate, presetCat) {
   const v = await modal('일정 추가', [
     { key: 'category', label: '종류', type: 'choice', value: presetCat || 'schedule', options: [
       { value: 'anniversary', label: '🎉 기념일' }, { value: 'travel', label: '✈️ 여행' },
-      { value: 'schedule', label: '📅 일정' }, { value: 'etc', label: '📎 기타' } ] },
+      { value: 'schedule', label: '📅 일정' } ] },
     { key: 'title', label: '제목', placeholder: '예: 제주 여행 / 병원 / 1주년' },
     { key: 'emoji', label: '이모지', type: 'emoji', value: '📌' },
     { key: 'start_date', label: '시작 날짜', type: 'date', value: presetDate || todayYmd() },
