@@ -490,6 +490,7 @@ $('#calNext').onclick = () => { calRef = new Date(calRef.getFullYear(), calRef.g
 function buildCalTabs() {
   const emails = Object.keys(CONFIG.PARTNERS || {});
   const tabs = [
+    { cal: 'all', label: '✨전체' },
     { cal: 'anniversary', label: '🎉기념일' },
     { cal: 'travel', label: '✈️여행' },
     ...emails.map(e => ({ cal: 'sched:' + e, label: `${partner(e).emoji}${partner(e).name} 일정` })),
@@ -596,8 +597,8 @@ function renderCalendar() {
   $('#calGrid').innerHTML = html;
   $$('#calGrid .cal-cell[data-day]').forEach(c => c.onclick = () => { selectedDay = { y, m, d: +c.dataset.day }; renderCalendar(); renderDayPanel(); });
 
-  const list = (data.events || []).filter(matchCat)
-    .sort((a, b) => a.start_date.localeCompare(b.start_date));
+  $('#eventListHead').textContent = `${y}년 ${m + 1}월 일정 📋`;
+  const list = [...laneOf.keys()].sort((a, b) => a.start_date.localeCompare(b.start_date));
   $('#eventList').innerHTML = list.length ? list.map(e => `
     <div class="anniv-item"><span class="emo">${esc(e.emoji)}</span>
       <div style="flex:1"><div class="t">${esc(e.title)} <span class="ev-cat">${esc(EVENT_CATS[e.category]?.label || '')}</span></div>
