@@ -515,35 +515,83 @@ function matchCat(e) {
   return true;
 }
 
-function eventsOnDay(y, m, d) {
+// 날짜 d 가 이벤트 e 에 포함되는가 (반복·연박 처리)
+function coversDay(e, y, m, d) {
   const cell = new Date(y, m, d); cell.setHours(0, 0, 0, 0);
-  return (data.events || []).filter(e => {
-    if (!matchCat(e)) return false;
-    const start = evStart(e); start.setHours(0, 0, 0, 0);
-    const rep = repeatOf(e);
-    if (e.category === 'anniversary' && rep !== 'none') {
-      if (cell < start) return false;
-      if (rep === 'weekly') return cell.getDay() === start.getDay();
-      if (rep === 'monthly') return cell.getDate() === start.getDate();
-      return start.getMonth() === m && start.getDate() === d;
-    }
-    const end = evEnd(e); end.setHours(0, 0, 0, 0);
-    return cell >= start && cell <= end;
-  });
+  const start = evStart(e); start.setHours(0, 0, 0, 0);
+  const rep = repeatOf(e);
+  if (e.category === 'anniversary' && rep !== 'none') {
+    if (cell < start) return false;
+    if (rep === 'weekly') return cell.getDay() === start.getDay();
+    if (rep === 'monthly') return cell.getDate() === start.getDate();
+    return start.getMonth() === m && start.getDate() === d;
+  }
+  const end = evEnd(e); end.setHours(0, 0, 0, 0);
+  return cell >= start && cell <= end;
+}
+function eventsOnDay(y, m, d) {
+  return (data.events || []).filter(e => matchCat(e) && coversDay(e, y, m, d));
+}
+
+// 이벤트 색 (탭/소유자별)
+function eventColor(e) {
+  if (e.category === 'anniversary') return '#ff7aa2';
+  if (e.category === 'travel') return '#3bb4c4';
+  if (!e.owner || e.owner === 'both') return '#a07bf0';
+  const emails = Object.keys(CONFIG.PARTNERS || {});
+  return e.owner === emails[0] ? '#ff9f43' : '#4dabf7';
+}
+function spanLen(e) { return (e.repeat && e.repeat !== 'none') ? 1 : nightsOf(e) + 1; }
+const MAX_LANES = 3;
+// 이벤트들을 겹치지 않게 레인(줄) 배치 → 멀티데이 바가 가로로 정렬됨
+function assignLanes(events, y, m) {
+  const dim = new Date(y, m + 1, 0).getDate();
+  const taken = {}, laneOf = new Map();
+  const evs = [...events].sort((a, b) => (spanLen(b) - spanLen(a)) || a.start_date.localeCompare(b.start_date));
+  for (const e of evs) {
+    const days = [];
+    for (let d = 1; d <= dim; d++) if (coversDay(e, y, m, d)) days.push(d);
+    if (!days.length) continue;
+    let lane = 0;
+    while (days.some(d => taken[d] && taken[d].has(lane))) lane++;
+    days.forEach(d => { (taken[d] = taken[d] || new Set()).add(lane); });
+    laneOf.set(e, { lane, days, dmin: days[0], dmax: days[days.length - 1] });
+  }
+  return laneOf;
 }
 function renderCalendar() {
   const y = calRef.getFullYear(), m = calRef.getMonth();
   $('#calLabel').textContent = `${y}년 ${m + 1}월`;
   const first = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
   const t = new Date(); t.setHours(0, 0, 0, 0);
+  const monthEvents = (data.events || []).filter(matchCat);
+  const laneOf = assignLanes(monthEvents, y, m);
+  const dayLane = {};   // dayLane[d][lane] = event
+  let globalMax = -1;
+  laneOf.forEach((info, e) => {
+    if (info.lane < MAX_LANES) { info.days.forEach(d => { (dayLane[d] = dayLane[d] || {})[info.lane] = e; }); globalMax = Math.max(globalMax, info.lane); }
+    else info.days.forEach(d => { (dayLane[d] = dayLane[d] || {}).overflow = (dayLane[d]?.overflow || 0) + 1; });
+  });
   let html = ['일','월','화','수','목','금','토'].map(d => `<div class="cal-dow">${d}</div>`).join('');
   for (let i = 0; i < first; i++) html += `<div class="cal-cell dim"></div>`;
   for (let d = 1; d <= days; d++) {
-    const hits = eventsOnDay(y, m, d);
+    const dow = new Date(y, m, d).getDay();
     const isToday = t.getFullYear() === y && t.getMonth() === m && t.getDate() === d;
     const isSel = selectedDay && selectedDay.y === y && selectedDay.m === m && selectedDay.d === d;
-    html += `<div class="cal-cell ${isToday ? 'today' : ''} ${isSel ? 'sel' : ''} ${hits.length ? 'has' : ''}" data-day="${d}">
-      ${hits.length ? `<span class="cal-emoji">${esc(hits[0].emoji)}</span>` : ''}${d}</div>`;
+    const lanes = dayLane[d] || {};
+    let bars = '';
+    for (let lane = 0; lane <= globalMax; lane++) {
+      const e = lanes[lane];
+      if (!e) { bars += `<div class="cal-bar empty"></div>`; continue; }
+      const info = laneOf.get(e);
+      const roundL = d === info.dmin || dow === 0;
+      const roundR = d === info.dmax || dow === 6;
+      const showLabel = d === info.dmin || dow === 0;
+      bars += `<div class="cal-bar ${roundL ? 'rl' : ''} ${roundR ? 'rr' : ''}" style="background:${eventColor(e)}">${showLabel ? `<span>${esc(e.emoji)}${esc(e.title)}</span>` : ''}</div>`;
+    }
+    if (lanes.overflow) bars += `<div class="cal-more">+${lanes.overflow}</div>`;
+    html += `<div class="cal-cell ${isToday ? 'today' : ''} ${isSel ? 'sel' : ''}" data-day="${d}">
+      <span class="cal-num">${d}</span><div class="cal-bars">${bars}</div></div>`;
   }
   $('#calGrid').innerHTML = html;
   $$('#calGrid .cal-cell[data-day]').forEach(c => c.onclick = () => { selectedDay = { y, m, d: +c.dataset.day }; renderCalendar(); renderDayPanel(); });

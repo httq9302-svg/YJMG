@@ -175,18 +175,26 @@ textarea { resize: none; }
   box-shadow: var(--shadow); margin-bottom: 14px;
 }
 .cal-dow { text-align: center; font-size: 12px; color: var(--ink-lt); padding: 4px 0; font-weight: 700; }
+.cal-grid { gap: 4px; }
 .cal-cell {
-  aspect-ratio: 1; display: flex; flex-direction: column; align-items: center;
-  justify-content: center; font-size: 13px; border-radius: 10px; position: relative;
+  min-height: 52px; display: flex; flex-direction: column; align-items: stretch;
+  font-size: 12px; border-radius: 8px; position: relative; padding-top: 3px;
 }
-.cal-cell.today { background: var(--pink); color: #fff; font-weight: 800; }
-.cal-cell.has::after {
-  content: ''; position: absolute; bottom: 5px; width: 5px; height: 5px;
-  border-radius: 50%; background: var(--pink);
+.cal-num { text-align: center; font-size: 12px; line-height: 18px; }
+.cal-cell.today .cal-num {
+  background: var(--pink); color: #fff; font-weight: 800;
+  width: 20px; height: 20px; line-height: 20px; border-radius: 50%; margin: 0 auto;
 }
-.cal-cell.today.has::after { background: #fff; }
-.cal-cell.dim { color: #d9cdd3; }
-.cal-emoji { font-size: 14px; position: absolute; top: 2px; right: 3px; }
+.cal-cell.dim { min-height: 0; }
+.cal-bars { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; }
+.cal-bar { height: 14px; line-height: 14px; font-size: 9px; color: #fff; overflow: hidden; white-space: nowrap; }
+.cal-bar.empty { background: transparent !important; }
+.cal-bar span { display: block; padding: 0 3px; overflow: hidden; text-overflow: ellipsis; }
+.cal-bar.rl { border-top-left-radius: 7px; border-bottom-left-radius: 7px; }
+.cal-bar.rr { border-top-right-radius: 7px; border-bottom-right-radius: 7px; }
+.cal-bar:not(.empty):not(.rl) { margin-left: -4px; }
+.cal-bar:not(.empty):not(.rr) { margin-right: -4px; }
+.cal-more { font-size: 9px; color: var(--ink-lt); text-align: center; line-height: 12px; }
 
 /* ============================================================
    세그먼트 + 리스트
