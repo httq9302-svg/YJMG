@@ -333,6 +333,9 @@ textarea { resize: none; }
 
 /* 캘린더 */
 .cal-cell.sel { outline: 2px solid var(--pink); }
+.cal-seg { margin-bottom: 12px; }
+.cal-seg .seg-btn { font-size: 11px; padding: 8px 2px; }
+.ev-cat { font-size: 11px; color: var(--ink-lt); font-weight: 600; }
 .list-head { font-weight: 800; font-size: 14px; margin: 6px 2px 2px; }
 .day-panel { display: flex; flex-direction: column; gap: 6px; }
 .day-panel #dayAdd { align-self: flex-start; }

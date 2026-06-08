@@ -86,14 +86,21 @@
         <span id="calLabel"></span>
         <button id="calNext" class="icon-btn">›</button>
       </div>
+      <div class="seg cal-seg" id="calSeg">
+        <button class="seg-btn active" data-cal="all">전체</button>
+        <button class="seg-btn" data-cal="anniversary">🎉기념일</button>
+        <button class="seg-btn" data-cal="travel">✈️여행</button>
+        <button class="seg-btn" data-cal="schedule">📅일정</button>
+        <button class="seg-btn" data-cal="etc">📎기타</button>
+      </div>
       <div class="cal-grid" id="calGrid"></div>
 
       <div id="calDayPanel" class="card day-panel hidden"></div>
 
-      <button id="addAnnivBtn" class="btn-primary full">+ 기념일 추가</button>
+      <button id="addEventBtn" class="btn-primary full">+ 일정 추가</button>
 
       <div class="list-head">전체 일정 📋</div>
-      <div id="annivList" class="anniv-list"></div>
+      <div id="eventList" class="anniv-list"></div>
     </section>
 
     <!-- ---------- 버킷리스트 ---------- -->

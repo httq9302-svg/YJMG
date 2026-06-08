@@ -174,11 +174,11 @@ async function enterApp(user) {
 // ============================================================
 async function loadAll() {
   const [a, b, d, s, ph, f, r, pk] = await Promise.all([
-    DB.anniversaries.list(), DB.bucket.list(), DB.diary.list(),
+    DB.events.list(), DB.bucket.list(), DB.diary.list(),
     DB.status.all(), DB.photos.list(), DB.footprints.list(), DB.roulette.list(),
     DB.poke.recent(),
   ]);
-  data.anniversaries = a.data || [];
+  data.events = a.data || [];
   data.bucket = b.data || [];
   data.diary = d.data || [];
   data.statuses = s.data || [];
@@ -301,7 +301,11 @@ function renderMood() {
 }
 $('#moodSave').onclick = async () => {
   markAct();
-  if (await write(DB.status.set({ user_email: ME, mood: pickedMood, message: $('#moodMsg').value.trim() }), '기분 저장됐어 💗')) await loadAll();
+  const mmsg = $('#moodMsg').value.trim();
+  if (await write(DB.status.set({ user_email: ME, mood: pickedMood, message: mmsg }), '기분 저장됐어 💗')) {
+    notifyPartner(`기분: ${pickedMood} ${mmsg}`.trim());
+    await loadAll();
+  }
 };
 
 // ============================================================
@@ -310,9 +314,8 @@ $('#moodSave').onclick = async () => {
 function partnerEmail() {
   return Object.keys(CONFIG.PARTNERS || {}).find(e => e !== ME);
 }
-// 상대 폰으로 ntfy 푸시 (앱 꺼져 있어도 알림)
-// JSON 엔드포인트로 보내서 제목·내용 모두 한글/이모지 가능
-async function pushPartner(msg) {
+// 상대 폰으로 ntfy 푸시 (앱 꺼져 있어도 알림). message 통째로 보냄
+async function pushPartner(message) {
   try {
     const topic = (CONFIG.NTFY_TOPIC || {})[partnerEmail()];
     if (!topic) return;
@@ -322,7 +325,7 @@ async function pushPartner(msg) {
       body: JSON.stringify({
         topic,
         title: '💗밍재',
-        message: `${partner(ME).name}가 콕! ${msg || '보고싶어 💗'}`,
+        message,
         tags: ['heart'],
         icon: CONFIG.NTFY_ICON || undefined,
         click: location.origin + location.pathname,
@@ -330,12 +333,15 @@ async function pushPartner(msg) {
     });
   } catch (e) {}
 }
+// "○○가 ~했어" 형식으로 상대에게 알림
+function notifyPartner(text) { pushPartner(`${partner(ME).name}가 ${text}`); }
+
 async function reloadPokes() { const r = await DB.poke.recent(); data.pokes = r.data || []; }
 async function sendPoke(msg, hearts) {
   markAct();
   if (hearts) showHearts();
   await write(DB.poke.send({ from_email: ME, message: msg || '보고싶어! 💗' }), '콕! 보냈어 💗');
-  pushPartner(msg);
+  pushPartner(`${partner(ME).name}가 콕! ${msg || '보고싶어 💗'}`);
   await reloadPokes(); renderPokes();
 }
 $('#pokeBtn').onclick = () => {
@@ -432,70 +438,83 @@ function manageRoulette() {
 }
 
 // ============================================================
-//  홈 — 다가오는 기념일 (반복 지원)
+//  이벤트(일정) 공통 — 카테고리 / 반복 / 연박
 // ============================================================
-function repeatOf(a) { return a.repeat || (a.yearly ? 'yearly' : 'none'); }
-function nextOccurrence(a) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const start = new Date(a.date + 'T00:00:00');
-  const rep = repeatOf(a);
-  if (rep === 'none') return start;
-  if (rep === 'weekly') {
-    const diff = (start.getDay() - today.getDay() + 7) % 7;
-    const d = new Date(today); d.setDate(today.getDate() + diff); return d;
+const EVENT_CATS = {
+  anniversary: { label: '🎉 기념일' }, travel: { label: '✈️ 여행' },
+  schedule: { label: '📅 일정' }, etc: { label: '📎 기타' },
+};
+const REPEAT_LABEL = { none: '', weekly: '매주', monthly: '매월', yearly: '매년' };
+let calCat = 'all';
+
+function repeatOf(e) { return e.repeat || 'none'; }
+function evStart(e) { return new Date(e.start_date + 'T00:00:00'); }
+function evEnd(e) { return new Date((e.end_date || e.start_date) + 'T00:00:00'); }
+function nightsOf(e) { return (!e.end_date || e.end_date === e.start_date) ? 0 : Math.round((evEnd(e) - evStart(e)) / 86400000); }
+function rangeLabel(e) { const n = nightsOf(e); return n <= 0 ? e.start_date : `${e.start_date} ~ ${e.end_date} (${n}박${n + 1}일)`; }
+function ownerBadge(e) { return (!e.owner || e.owner === 'both') ? '👫' : partner(e.owner).emoji; }
+
+function nextOccurrence(e) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const start = evStart(e); const rep = repeatOf(e);
+  if (e.category === 'anniversary' && rep !== 'none') {
+    if (rep === 'weekly') { const diff = (start.getDay() - today.getDay() + 7) % 7; const d = new Date(today); d.setDate(today.getDate() + diff); return d; }
+    if (rep === 'monthly') { let d = new Date(today.getFullYear(), today.getMonth(), start.getDate()); if (d < today) d = new Date(today.getFullYear(), today.getMonth() + 1, start.getDate()); return d; }
+    let d = new Date(today.getFullYear(), start.getMonth(), start.getDate()); if (d < today) d.setFullYear(today.getFullYear() + 1); return d;
   }
-  if (rep === 'monthly') {
-    let d = new Date(today.getFullYear(), today.getMonth(), start.getDate());
-    if (d < today) d = new Date(today.getFullYear(), today.getMonth() + 1, start.getDate());
-    return d;
-  }
-  // yearly
-  let d = new Date(today.getFullYear(), start.getMonth(), start.getDate());
-  if (d < today) d.setFullYear(today.getFullYear() + 1);
-  return d;
+  return start;
 }
 function renderUpcoming() {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const items = data.anniversaries.map(a => ({ a, when: nextOccurrence(a) }))
-    .filter(x => x.when >= today).sort((x, y) => x.when - y.when).slice(0, 5);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const items = (data.events || []).map(e => ({ e, when: nextOccurrence(e) }))
+    .filter(x => x.when >= today || evEnd(x.e) >= today)
+    .sort((a, b) => a.when - b.when).slice(0, 6);
   const host = $('#upcomingList');
-  if (!items.length) { host.innerHTML = '<div class="empty">기념일을 추가해봐 📅</div>'; return; }
-  host.innerHTML = items.map(({ a, when }) => {
+  if (!items.length) { host.innerHTML = '<div class="empty">일정을 추가해봐 📅</div>'; return; }
+  host.innerHTML = items.map(({ e, when }) => {
     const dleft = Math.round((when - today) / 86400000);
-    return `<div class="upcoming-item"><span class="emo">${esc(a.emoji)}</span>
-      <span class="t">${esc(a.title)}</span>
-      <span class="d">${dleft === 0 ? '오늘! 🎉' : 'D-' + dleft}</span></div>`;
+    const d = dleft <= 0 ? (evEnd(e) >= today ? '진행중 🎉' : '오늘! 🎉') : 'D-' + dleft;
+    return `<div class="upcoming-item"><span class="emo">${esc(e.emoji)}</span>
+      <span class="t">${esc(e.title)}</span><span class="d">${d}</span></div>`;
   }).join('');
 }
 
 // ============================================================
 //  캘린더
 // ============================================================
-const REPEAT_LABEL = { none: '', weekly: '매주', monthly: '매월', yearly: '매년' };
 $('#calPrev').onclick = () => { calRef = new Date(calRef.getFullYear(), calRef.getMonth() - 1, 1); renderCalendar(); };
 $('#calNext').onclick = () => { calRef = new Date(calRef.getFullYear(), calRef.getMonth() + 1, 1); renderCalendar(); };
+$$('#calSeg .seg-btn').forEach(b => b.onclick = () => {
+  calCat = b.dataset.cal;
+  $$('#calSeg .seg-btn').forEach(x => x.classList.toggle('active', x === b));
+  renderCalendar();
+});
 
-function annivOnDay(y, m, d) {
-  const cell = new Date(y, m, d);
-  return data.anniversaries.filter(a => {
-    const start = new Date(a.date + 'T00:00:00'); start.setHours(0,0,0,0);
-    const rep = repeatOf(a);
-    if (rep === 'none') return start.getFullYear() === y && start.getMonth() === m && start.getDate() === d;
-    if (cell < start) return false;
-    if (rep === 'weekly') return cell.getDay() === start.getDay();
-    if (rep === 'monthly') return cell.getDate() === start.getDate();
-    return cell.getMonth() === m && start.getMonth() === m && start.getDate() === d; // yearly
+function eventsOnDay(y, m, d) {
+  const cell = new Date(y, m, d); cell.setHours(0, 0, 0, 0);
+  return (data.events || []).filter(e => {
+    if (calCat !== 'all' && e.category !== calCat) return false;
+    const start = evStart(e); start.setHours(0, 0, 0, 0);
+    const rep = repeatOf(e);
+    if (e.category === 'anniversary' && rep !== 'none') {
+      if (cell < start) return false;
+      if (rep === 'weekly') return cell.getDay() === start.getDay();
+      if (rep === 'monthly') return cell.getDate() === start.getDate();
+      return start.getMonth() === m && start.getDate() === d;
+    }
+    const end = evEnd(e); end.setHours(0, 0, 0, 0);
+    return cell >= start && cell <= end;
   });
 }
 function renderCalendar() {
   const y = calRef.getFullYear(), m = calRef.getMonth();
   $('#calLabel').textContent = `${y}년 ${m + 1}월`;
   const first = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
-  const t = new Date(); t.setHours(0,0,0,0);
+  const t = new Date(); t.setHours(0, 0, 0, 0);
   let html = ['일','월','화','수','목','금','토'].map(d => `<div class="cal-dow">${d}</div>`).join('');
   for (let i = 0; i < first; i++) html += `<div class="cal-cell dim"></div>`;
   for (let d = 1; d <= days; d++) {
-    const hits = annivOnDay(y, m, d);
+    const hits = eventsOnDay(y, m, d);
     const isToday = t.getFullYear() === y && t.getMonth() === m && t.getDate() === d;
     const isSel = selectedDay && selectedDay.y === y && selectedDay.m === m && selectedDay.d === d;
     html += `<div class="cal-cell ${isToday ? 'today' : ''} ${isSel ? 'sel' : ''} ${hits.length ? 'has' : ''}" data-day="${d}">
@@ -504,45 +523,59 @@ function renderCalendar() {
   $('#calGrid').innerHTML = html;
   $$('#calGrid .cal-cell[data-day]').forEach(c => c.onclick = () => { selectedDay = { y, m, d: +c.dataset.day }; renderCalendar(); renderDayPanel(); });
 
-  // 전체 일정
-  const list = [...data.anniversaries].sort((a, b) => a.date.localeCompare(b.date));
-  $('#annivList').innerHTML = list.length ? list.map(a => `
-    <div class="anniv-item"><span class="emo">${esc(a.emoji)}</span>
-      <div style="flex:1"><div class="t">${esc(a.title)}</div>
-        <div class="date">${esc(a.date)}${repeatOf(a) !== 'none' ? ' · ' + REPEAT_LABEL[repeatOf(a)] : ''}</div></div>
-      <button class="del" data-del-anniv="${a.id}">✕</button></div>`).join('') : '<div class="empty">아직 기념일이 없어</div>';
-  $$('[data-del-anniv]').forEach(b => b.onclick = async () => { markAct(); await DB.anniversaries.remove(+b.dataset.delAnniv); await loadAll(); });
+  const list = (data.events || []).filter(e => calCat === 'all' || e.category === calCat)
+    .sort((a, b) => a.start_date.localeCompare(b.start_date));
+  $('#eventList').innerHTML = list.length ? list.map(e => `
+    <div class="anniv-item"><span class="emo">${esc(e.emoji)}</span>
+      <div style="flex:1"><div class="t">${esc(e.title)} <span class="ev-cat">${esc(EVENT_CATS[e.category]?.label || '')}</span></div>
+        <div class="date">${esc(rangeLabel(e))}${repeatOf(e) !== 'none' ? ' · ' + REPEAT_LABEL[repeatOf(e)] : ''}${e.category === 'schedule' ? ' · ' + ownerBadge(e) : ''}</div></div>
+      <button class="del" data-del-ev="${e.id}">✕</button></div>`).join('') : '<div class="empty">아직 일정이 없어</div>';
+  $$('[data-del-ev]').forEach(b => b.onclick = async () => { markAct(); await DB.events.remove(+b.dataset.delEv); await loadAll(); });
   renderDayPanel();
 }
 function renderDayPanel() {
   const panel = $('#calDayPanel');
   if (!selectedDay) { panel.classList.add('hidden'); return; }
   const { y, m, d } = selectedDay;
-  const hits = annivOnDay(y, m, d);
+  const hits = eventsOnDay(y, m, d);
   panel.classList.remove('hidden');
   panel.innerHTML = `<div class="card-title">${y}.${m + 1}.${d} 일정</div>` +
-    (hits.length ? hits.map(a => `<div class="upcoming-item"><span class="emo">${esc(a.emoji)}</span>
-      <span class="t">${esc(a.title)}</span>
-      <span class="date">${repeatOf(a) !== 'none' ? REPEAT_LABEL[repeatOf(a)] : ''}</span></div>`).join('')
+    (hits.length ? hits.map(e => `<div class="upcoming-item"><span class="emo">${esc(e.emoji)}</span>
+      <span class="t">${esc(e.title)}</span>
+      <span class="date">${esc(EVENT_CATS[e.category]?.label || '')}${e.category === 'schedule' ? ' ' + ownerBadge(e) : ''}${nightsOf(e) > 0 ? ' · ' + nightsOf(e) + '박' : ''}</span></div>`).join('')
       : '<div class="empty" style="padding:12px">이 날은 일정이 없어</div>') +
-    `<button class="btn-ghost" id="dayAdd">+ 이 날 기념일 추가</button>`;
-  $('#dayAdd').onclick = () => openAnnivModal(`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
+    `<button class="btn-ghost" id="dayAdd">+ 이 날 일정 추가</button>`;
+  $('#dayAdd').onclick = () => openEventModal(`${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
 }
-async function openAnnivModal(presetDate) {
-  const v = await modal('기념일 추가', [
-    { key: 'title', label: '이름', placeholder: '예: 첫 데이트, 생일' },
-    { key: 'date', label: '날짜', type: 'date', value: presetDate || todayYmd() },
-    { key: 'emoji', label: '이모지', type: 'emoji', value: '💗' },
-    { key: 'repeat', label: '반복', type: 'choice', value: 'none', options: [
-      { value: 'none', label: '반복없음' }, { value: 'weekly', label: '매주' },
-      { value: 'monthly', label: '매월' }, { value: 'yearly', label: '매년' } ] },
+async function openEventModal(presetDate, presetCat) {
+  const v = await modal('일정 추가', [
+    { key: 'category', label: '종류', type: 'choice', value: presetCat || 'schedule', options: [
+      { value: 'anniversary', label: '🎉 기념일' }, { value: 'travel', label: '✈️ 여행' },
+      { value: 'schedule', label: '📅 일정' }, { value: 'etc', label: '📎 기타' } ] },
+    { key: 'title', label: '제목', placeholder: '예: 제주 여행 / 병원 / 1주년' },
+    { key: 'emoji', label: '이모지', type: 'emoji', value: '📌' },
+    { key: 'start_date', label: '시작 날짜', type: 'date', value: presetDate || todayYmd() },
+    { key: 'end_date', label: '종료 날짜 (연박이면 입력, 당일은 비움)', type: 'date' },
+    { key: 'owner', label: '누구 일정?', type: 'choice', value: 'both', options: [
+      { value: 'both', label: '👫 같이' }, { value: 'me', label: `${partner(ME).emoji} 나` }, { value: 'partner', label: '상대' } ] },
+    { key: 'repeat', label: '반복 (기념일만)', type: 'choice', value: 'none', options: [
+      { value: 'none', label: '없음' }, { value: 'weekly', label: '매주' }, { value: 'monthly', label: '매월' }, { value: 'yearly', label: '매년' } ] },
+    { key: 'note', label: '메모 (선택)', type: 'textarea' },
   ]);
-  if (v && v.title && v.date) {
-    markAct();
-    if (await write(DB.anniversaries.add({ title: v.title, date: v.date, emoji: v.emoji || '💗', repeat: v.repeat, yearly: v.repeat === 'yearly' }), '기념일 추가됐어 📅')) await loadAll();
+  if (!v || !v.title || !v.start_date) return;
+  const owner = v.owner === 'me' ? ME : v.owner === 'partner' ? partnerEmail() : 'both';
+  const end = v.end_date && v.end_date >= v.start_date ? v.end_date : null;
+  markAct();
+  if (await write(DB.events.add({
+    category: v.category, title: v.title, emoji: v.emoji || '📌',
+    start_date: v.start_date, end_date: end, owner,
+    repeat: v.category === 'anniversary' ? v.repeat : 'none', note: v.note || '', created_by: ME,
+  }), '일정 추가됐어 📅')) {
+    notifyPartner(`일정 추가: ${v.emoji || '📌'} ${v.title}`);
+    await loadAll();
   }
 }
-$('#addAnnivBtn').onclick = () => openAnnivModal();
+$('#addEventBtn').onclick = () => openEventModal();
 
 // ============================================================
 //  버킷리스트
@@ -624,7 +657,10 @@ async function openBucketAdd(cat) {
   const row = build(v);
   if (!row.title) return toast('내용을 입력해줘');
   markAct();
-  if (await write(DB.bucket.add({ ...row, created_by: ME }), '추가됐어 ✨')) await loadAll();
+  if (await write(DB.bucket.add({ ...row, created_by: ME }), '추가됐어 ✨')) {
+    notifyPartner(`${BUCKET_LABEL[cat]} 추가: ${row.title}`);
+    await loadAll();
+  }
 }
 
 function renderBucket() {
@@ -677,7 +713,7 @@ $('#photoInput').onchange = async (e) => {
   try {
     const url = await DB.photos.upload(file, ME);
     markAct();
-    if (await write(DB.photos.add({ url, title: v.title || '', taken_date: v.date || null, created_by: ME }), '사진 올라갔어 📸')) await loadAll();
+    if (await write(DB.photos.add({ url, title: v.title || '', taken_date: v.date || null, created_by: ME }), '사진 올라갔어 📸')) { notifyPartner(`사진을 올렸어 📸 ${v.title || ''}`.trim()); await loadAll(); }
   } catch (err) { toast('⚠️ 업로드 실패: ' + err.message); }
 };
 function renderPhotos() {
@@ -718,7 +754,7 @@ $('#addFootBtn').onclick = async () => {
   markAct();
   let photo_url = null;
   if (v.photo) { toast('사진 올리는 중... ⏳'); try { photo_url = await DB.photos.upload(v.photo, ME); } catch (e) { toast('⚠️ 사진 실패: ' + e.message); } }
-  if (await write(DB.footprints.add({ title: v.title, place: v.place, date: v.date || todayYmd(), emoji: v.emoji || '📍', note: v.note, photo_url }), '발자취 남겼어 🗺️')) await loadAll();
+  if (await write(DB.footprints.add({ title: v.title, place: v.place, date: v.date || todayYmd(), emoji: v.emoji || '📍', note: v.note, photo_url }), '발자취 남겼어 🗺️')) { notifyPartner(`발자취 남김: ${v.emoji || '📍'} ${v.title}`); await loadAll(); }
 };
 function renderFootprints() {
   const host = $('#footTimeline');
@@ -746,7 +782,7 @@ $('#diaryAdd').onclick = async () => {
   if (!content) return toast('내용을 적어줘 ✍️');
   $('#diaryInput').value = '';
   markAct();
-  if (await write(DB.diary.add({ author: ME, mood: diaryMood, content, entry_date: todayYmd() }), '남겼어 💌')) await loadAll();
+  if (await write(DB.diary.add({ author: ME, mood: diaryMood, content, entry_date: todayYmd() }), '남겼어 💌')) { notifyPartner('일기를 남겼어 💌'); await loadAll(); }
 };
 function renderDiary() {
   const host = $('#diaryList');

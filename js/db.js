@@ -34,6 +34,13 @@ const DB = {
     remove: (id) => sb.from('anniversaries').delete().eq('id', id),
   },
 
+  // ---------- 캘린더 일정 ----------
+  events: {
+    list: () => sb.from('events').select('*').order('start_date'),
+    add: (row) => sb.from('events').insert(row),
+    remove: (id) => sb.from('events').delete().eq('id', id),
+  },
+
   // ---------- 버킷리스트 ----------
   bucket: {
     list: () => sb.from('bucket_items').select('*').order('created_at', { ascending: false }),
@@ -99,7 +106,7 @@ const DB = {
   // ---------- 실시간 구독 ----------
   // 모든 테이블 변경을 한 채널로 듣고, 콜백에 (table, payload) 전달
   subscribe(onChange) {
-    const tables = ['anniversaries','bucket_items','diary_entries','statuses','pokes','photos','footprints','roulette_options'];
+    const tables = ['events','anniversaries','bucket_items','diary_entries','statuses','pokes','photos','footprints','roulette_options'];
     const ch = sb.channel('couple-realtime');
     tables.forEach((t) => {
       ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, (payload) => {
