@@ -485,6 +485,19 @@ function renderUpcoming() {
 // ============================================================
 $('#calPrev').onclick = () => { calRef = new Date(calRef.getFullYear(), calRef.getMonth() - 1, 1); renderCalendar(); };
 $('#calNext').onclick = () => { calRef = new Date(calRef.getFullYear(), calRef.getMonth() + 1, 1); renderCalendar(); };
+// 좌우 스와이프로 달 넘기기
+(function () {
+  const grid = $('#calGrid'); if (!grid) return;
+  let sx = 0, sy = 0;
+  grid.addEventListener('touchstart', e => { const t = e.changedTouches[0]; sx = t.clientX; sy = t.clientY; }, { passive: true });
+  grid.addEventListener('touchend', e => {
+    const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      calRef = new Date(calRef.getFullYear(), calRef.getMonth() + (dx < 0 ? 1 : -1), 1);
+      renderCalendar();
+    }
+  }, { passive: true });
+})();
 
 // 탭: 기념일 / 여행 / (사람별 일정) / 공통일정 — 동적 생성
 function buildCalTabs() {
@@ -597,15 +610,36 @@ function renderCalendar() {
   $('#calGrid').innerHTML = html;
   $$('#calGrid .cal-cell[data-day]').forEach(c => c.onclick = () => { selectedDay = { y, m, d: +c.dataset.day }; renderCalendar(); renderDayPanel(); });
 
-  $('#eventListHead').textContent = `${y}년 ${m + 1}월 일정 📋`;
-  const list = [...laneOf.keys()].sort((a, b) => a.start_date.localeCompare(b.start_date));
-  $('#eventList').innerHTML = list.length ? list.map(e => `
-    <div class="anniv-item"><span class="emo">${esc(e.emoji)}</span>
-      <div style="flex:1"><div class="t">${esc(e.title)} <span class="ev-cat">${esc(EVENT_CATS[e.category]?.label || '')}</span></div>
-        <div class="date">${esc(rangeLabel(e))}${repeatOf(e) !== 'none' ? ' · ' + REPEAT_LABEL[repeatOf(e)] : ''}${e.category === 'schedule' ? ' · ' + ownerBadge(e) : ''}</div></div>
-      <button class="del" data-del-ev="${e.id}">✕</button></div>`).join('') : '<div class="empty">아직 일정이 없어</div>';
-  $$('[data-del-ev]').forEach(b => b.onclick = async () => { markAct(); await DB.events.remove(+b.dataset.delEv); await loadAll(); });
   renderDayPanel();
+  renderYearSummary();
+}
+// 이벤트가 해당 달에 하루라도 걸치는가
+function eventInMonth(e, y, m) {
+  const dim = new Date(y, m + 1, 0).getDate();
+  for (let d = 1; d <= dim; d++) if (coversDay(e, y, m, d)) return true;
+  return false;
+}
+function renderYearSummary() {
+  const y = calRef.getFullYear();
+  $('#calSummaryHead').textContent = `${y}년 월별 요약 📊`;
+  const emails = Object.keys(CONFIG.PARTNERS || {});
+  const evs = data.events || [];
+  const chip = (emoji, n) => `<span class="sum-chip ${n ? '' : 'zero'}">${emoji}${n}</span>`;
+  let html = '';
+  for (let m = 0; m < 12; m++) {
+    const inM = evs.filter(e => eventInMonth(e, y, m));
+    const anni = inM.filter(e => e.category === 'anniversary').length;
+    const trav = inM.filter(e => e.category === 'travel').length;
+    const p1 = inM.filter(e => e.category === 'schedule' && e.owner === emails[0]).length;
+    const p2 = inM.filter(e => e.category === 'schedule' && e.owner === emails[1]).length;
+    const both = inM.filter(e => e.category === 'schedule' && (!e.owner || e.owner === 'both')).length;
+    const cur = m === calRef.getMonth();
+    html += `<div class="sum-row ${cur ? 'cur' : ''}" data-mon="${m}">
+      <span class="sum-mon">${m + 1}월</span>
+      <span class="sum-chips">${chip('🎉', anni)}${chip('✈️', trav)}${chip(partner(emails[0]).emoji, p1)}${chip(partner(emails[1]).emoji, p2)}${chip('👫', both)}</span></div>`;
+  }
+  $('#calSummary').innerHTML = html;
+  $$('#calSummary .sum-row').forEach(r => r.onclick = () => { calRef = new Date(y, +r.dataset.mon, 1); renderCalendar(); });
 }
 function renderDayPanel() {
   const panel = $('#calDayPanel');
@@ -616,9 +650,11 @@ function renderDayPanel() {
   panel.innerHTML = `<div class="card-title">${y}.${m + 1}.${d} 일정</div>` +
     (hits.length ? hits.map(e => `<div class="upcoming-item"><span class="emo">${esc(e.emoji)}</span>
       <span class="t">${esc(e.title)}</span>
-      <span class="date">${esc(EVENT_CATS[e.category]?.label || '')}${e.category === 'schedule' ? ' ' + ownerBadge(e) : ''}${nightsOf(e) > 0 ? ' · ' + nightsOf(e) + '박' : ''}</span></div>`).join('')
+      <span class="date">${esc(EVENT_CATS[e.category]?.label || '')}${e.category === 'schedule' ? ' ' + ownerBadge(e) : ''}${nightsOf(e) > 0 ? ' · ' + nightsOf(e) + '박' : ''}</span>
+      <button class="del" data-del-ev="${e.id}">✕</button></div>`).join('')
       : '<div class="empty" style="padding:12px">이 날은 일정이 없어</div>') +
     `<button class="btn-ghost" id="dayAdd">+ 이 날 일정 추가</button>`;
+  $$('[data-del-ev]', panel).forEach(b => b.onclick = async () => { markAct(); await DB.events.remove(+b.dataset.delEv); await loadAll(); });
   $('#dayAdd').onclick = () => openEventModal(`${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
 }
 async function openEventModal(presetDate, presetCat) {
